@@ -1,0 +1,54 @@
+push 3
+push 4
+push 2
+push 3
+push 4
+push 2
+push 3
+push 4
+push 2
+push 3
+push 4
+push 2
+push 3
+push 4
+push 2
+push 3
+push 4
+push 2
+push 3
+push 4
+push 211
+push 1
+push -100000
+push 5
+push 134
+extract-min
+extract-min
+decrease-key 22 -10000000
+extract-min
+decrease-key 17 -2
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min
+extract-min

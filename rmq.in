@@ -1,0 +1,13 @@
+5
+1 2 3 4 5
+min 2 5
+min 1 5
+min 1 4
+min 2 4
+set 1 10
+set 2 3
+set 5 2
+min 2 5
+min 1 5
+min 1 4
+min 2 4
