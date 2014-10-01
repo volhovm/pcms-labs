@@ -14,7 +14,6 @@ public class test {
 //        for (int i = 0; i < 100_000; i++) {
 //            scout.println(randomPhrase(3));
 //        }
-
         scout.print("100000\n");
         for (int i = 0; i < 100000; i++) scout.print(rand.nextInt() + " ");
         scout.close();

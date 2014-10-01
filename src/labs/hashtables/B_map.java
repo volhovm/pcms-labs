@@ -4,8 +4,6 @@ package labs.hashtables;
  * Created on 18.04.14
  */
 
-
-
 import java.io.*;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
