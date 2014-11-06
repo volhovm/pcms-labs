@@ -48,9 +48,6 @@ void exec() {
 			dfs2(vrt);
 		}
 	}
-//	for (int i = 0; i < n; i++) {
-//		out[i] = num - out[i] + 1; 
-//	}
 }
 
 int main() {
