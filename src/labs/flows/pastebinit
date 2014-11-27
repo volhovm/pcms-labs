@@ -1,0 +1,155 @@
+--- maxflow.cpp	2014-11-27 03:52:10.104975307 +0300
++++ decomposition.cpp	2014-11-27 14:31:26.072602281 +0300
+@@ -8,26 +8,27 @@
+ using namespace std;
+ 
+ struct edge {
+-    int from, to, cap, flow;
++    long long from, to, cap, flow, num;
+ };
+ 
+-const int INF = 100000000;
+-const int MAXN = 110;
++const long long INF = 10000000000000000;
++const int MAXN = 550;
+ int n;
+ int s = 0;
+ int t;
+ int dist[MAXN], q[MAXN], ptr[MAXN];
++bool used[MAXN];
+ vector<edge> edges;
++vector<vector<int> > ans;
+ 
+ //indexes of edges in 'edges' outcoming from g[i]
+ vector<int> g[MAXN];
+ 
+-void add_edge(int from, int to, int cap) {
+-    edge e1 = {from, to, cap, 0};
+-    edge e2 = {to, from, 0, 0};
+-    g[from].push_back((int) edges.size());
+-    g[to].push_back((int) edges.size() + 1);
+-    edges.push_back(e1);
++void add_edge(int from, int to, long long cap, int num) {
++    edge e1 = {from, to, cap, 0, num};
++    edge e2 = {to, from, 0, 0, num};
++    g[from].push_back((int) edges.size()); edges.push_back(e1);
++    g[to].push_back((int) edges.size());
+     edges.push_back(e2);
+ }
+ 
+@@ -51,12 +52,12 @@
+     return dist[t] != -1;
+ }
+ 
+-int dfs(int v, int flow) {
++long long dfs(int v, long long flow) {
+     if (!flow) return 0;
+     if (v == t) return flow;
+     for (; ptr[v] < (int) g[v].size(); ptr[v]++) {
+-	int curr = g[v][ptr[v]];
+-	int to = edges[curr].to;
++	long long curr = g[v][ptr[v]];
++	long long to = edges[curr].to;
+ 	if (dist[to] != dist[v] + 1) continue;
+ 	int pushed = dfs(to, min(flow, edges[curr].cap - edges[curr].flow));
+ 	if (pushed) {
+@@ -69,32 +70,75 @@
+     return 0;
+ }
+ 
+-int main() {
+-	ios::sync_with_stdio(0);
+-	ifstream fin("maxflow.in");
+-	ofstream fout;
+-	fout.open("maxflow.out");
+-	fin >> n;
+-	t = n - 1;
+-	int m;
+-	fin >> m;
+-	for (int i = 0; i < m; i++) {
+-	    int a, b, cap;
+-	    fin >> a >> b >> cap;
+-	    add_edge(a - 1, b - 1, cap);
++long long dfs2(int v, long long minflow, vector<int>& storage) {
++    //    cout << "in v: " << v + 1 << endl;
++    if ((v == t) | used[v]) return minflow;
++    used[v] = true;
++    for (int i = 0; i < g[v].size(); i++) {
++	int curr = g[v][i];
++	int to = edges[curr].to;
++	if (to == v) continue;
++	//	cout << "viewing edge: " << edges[curr].from  + 1<< " " <<
++	//	    edges[curr].to + 1<< " " << edges[curr].cap << " " << edges[curr].num << endl;
++	if (edges[curr].flow > 0 && !used[to]) {
++	    //    cout << "chose edge: " << edges[curr].from + 1 << " " <<
++	    //	edges[curr].to + 1 << " " << edges[curr].cap << " " << edges[curr].num << endl;
++	    minflow = min(minflow, edges[curr].flow);
++	    storage.push_back(edges[curr].num);
++	    minflow = min(minflow, dfs2(to, minflow, storage));
++	    edges[curr].flow -= minflow;
++	    break;
+ 	}
+-	int flow = 0;
++    }
++    return minflow;
++}
++
++
++int main() {
++    ios::sync_with_stdio(0);
++    ifstream fin("decomposition.in");
++    ofstream fout;
++    fout.open("decomposition.out");
++    fin >> n;
++    t = n - 1;
++    int m;
++    fin >> m;
++    for (int i = 0; i < m; i++) {
++	int a, b, cap;
++	fin >> a >> b >> cap;
++	add_edge(a - 1, b - 1, cap, i + 1);
++    }
++    int flow = 0;
++    while (true) {
++	if (!bfs()) break;
++	memset(ptr, 0, n * sizeof ptr[0]);
++	int pushed;
+ 	while (true) {
+-	    if (!bfs()) break;
+-	    memset(ptr, 0, n * sizeof ptr[0]);
+-	    int pushed;
+-	    while (true) {
+-		pushed = dfs(s, INF);
+-		if (pushed == 0) break;
+-		flow += pushed;
++	    pushed = dfs(s, INF);
++	    if (pushed == 0) break;
++	    flow += pushed;
++	}
++    }
++    memset(ptr, 0, n * sizeof ptr[0]);
++    while (true) {
++	vector<int> vec;
++	memset(used, false, n * sizeof used[0]);
++	long long curr = dfs2(s, INF, vec);
++	if (curr == INF) break;
++	vec.push_back(curr);
++	//	cout << "next cycle, got " << curr << endl;
++	ans.push_back(vec);
++    }
++    cout << endl;
++    fout << ans.size() << endl;
++    for (int i = 0; i < ans.size(); i++) {
++	if (ans[i].size() > 1) {
++	    fout << ans[i].back() << " " << ans[i].size() - 1 << " ";
++	    for (int j = 0; j < ans[i].size() - 1; j++) {
++		fout << ans[i][j]<< " ";
+ 	    }
++	    fout << endl;
+ 	}
+-	cout << flow;
+-	fout << flow;
+-	fout.close();
++    }
++    fout.close();
+ }

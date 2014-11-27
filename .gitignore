@@ -7,3 +7,5 @@ project/boot/
 .idea/
 out/
 *.iml
+*~
+*#

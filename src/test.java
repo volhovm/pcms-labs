@@ -10,12 +10,18 @@ import java.util.Random;
 public class test {
     private static final Random rand = new Random();
     public static void main(String[] args) throws IOException {
-        PrintWriter scout = new PrintWriter(new FileWriter("mindiff.in"));
-//        for (int i = 0; i < 100_000; i++) {
-//            scout.println(randomPhrase(3));
-//        }
-        scout.print("1000 10000\n");
-        for (int i = 0; i < 10000; i++) scout.println((rand.nextInt(1000) + 1) + " " + (rand.nextInt(1000) + 1) + " " + rand.nextInt(10000));
+        PrintWriter scout = new PrintWriter(new FileWriter("maxflow.in"));
+        scout.print("100 1000\n");
+        for (int i = 0; i < 1000; i++) {
+            int a = (rand.nextInt(100) + 1);
+            int b = (rand.nextInt(100) + 1);
+            if (rand.nextInt(5) > 1)
+                if (b < a) {
+                    i--;
+                    continue;
+                }
+            scout.println(a + " " + b  + " " + rand.nextInt(100000));
+        }
         scout.close();
     }
 
