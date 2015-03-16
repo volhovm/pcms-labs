@@ -6,9 +6,6 @@ package libraries;
  */
 
 public class Strings {
-    private static int min(int a, int b) { return a < b ? a : b; }
-    private static int max(int a, int b) { return a > b ? a : b; }
-
     public static int[] prefixFunction(String string) {
         int[] prefix = new int[string.length()];
         prefix[0] = 0;
@@ -32,7 +29,7 @@ public class Strings {
         int[] zf = new int[string.length()];
         int l = 0, r = 0;
         for (int i = 1; i < string.length(); i++) {
-            zf[i] = max(0, min(r - i, zf[i - l]));
+            zf[i] = Math.max(0, Math.min(r - i, zf[i - l]));
             while (i + zf[i] < string.length() && string.charAt(zf[i]) == string.charAt(i + zf[i])) {
                 zf[i]++;
             }
