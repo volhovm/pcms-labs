@@ -9,58 +9,57 @@ import java.util.Random;
  */
 public class test {
     private static final Random rand = new Random();
+
     public static void main(String[] args) throws IOException {
-	PrintWriter scout = new PrintWriter(new FileWriter("multiassignment.in"));
-	scout.print("10 7\n");
-	for (int i = 0; i < 10; i++) {
-	    for (int j = 0; j < 10; j++) {
-		int a = (rand.nextInt(10) + 1);
-		scout.write(a + " ");
-	    }
-	    scout.println();
-	}
-	scout.close();
+        PrintWriter scout = new PrintWriter(new FileWriter("search2.in"));
+        scout.print("aba\n");
+        for (int i = 0; i < 1000000; i++) {
+            scout.print((char)('a' + rand.nextInt('f' - 'a')));
+        }
+        scout.close();
     }
 
     private enum KeyWords {
-	put(2), delete(2), get(1),
-	deleteall(1)
+        put(2), delete(2), get(1),
+        deleteall(1)
 //        , prev(1), next(1)
-	    ;
+        ;
 
-	KeyWords(int i) {
-	    argsNumber = i;
-	}
-	int argsNumber;
+        KeyWords(int i) {
+            argsNumber = i;
+        }
+
+        int argsNumber;
     }
 
     private static String randomPhrase(int argsLength) {
-	String out = "";
-	KeyWords[] wordArray = KeyWords.values();
-	KeyWords chosenWord = (wordArray[rand.nextInt(100000) % wordArray.length]);
-	out += chosenWord.toString();
-	for (int i = 0; i < chosenWord.argsNumber; i++) {
-	    out += " " + randomMaybeBufferedString(argsLength);
-	}
-	return out;
+        String out = "";
+        KeyWords[] wordArray = KeyWords.values();
+        KeyWords chosenWord = (wordArray[rand.nextInt(100000) % wordArray.length]);
+        out += chosenWord.toString();
+        for (int i = 0; i < chosenWord.argsNumber; i++) {
+            out += " " + randomMaybeBufferedString(argsLength);
+        }
+        return out;
     }
 
-    private static String randomCharSequence(int length){
-	StringBuilder out = new StringBuilder();
-	for (int i = 0; i < length; i++) {
-	    out.append(((char) (rand.nextInt('z' - 'a') + 'a')));
-	}
-	return out.toString();
+    private static String randomCharSequence(int length) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            out.append(((char) (rand.nextInt('z' - 'a') + 'a')));
+        }
+        return out.toString();
     }
 
     private static ArrayList<String> buffer = new ArrayList<>();
-    private static String randomMaybeBufferedString(int length){
-	if (!buffer.isEmpty() && rand.nextInt(4) != 3){
-	    return buffer.get(rand.nextInt(buffer.size()));
-	} else {
-	    String s = randomCharSequence(length);
-	    buffer.add(s);
-	    return s;
-	}
+
+    private static String randomMaybeBufferedString(int length) {
+        if (!buffer.isEmpty() && rand.nextInt(4) != 3) {
+            return buffer.get(rand.nextInt(buffer.size()));
+        } else {
+            String s = randomCharSequence(length);
+            buffer.add(s);
+            return s;
+        }
     }
 }
