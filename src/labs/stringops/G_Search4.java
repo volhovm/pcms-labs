@@ -83,6 +83,7 @@ public class G_Search4 {
         }
 
         private void setSymlinks(Node node) {
+            if (node.symlink != null) return;
             if (node.parent == null) {
                 if (node != root) throw new IllegalStateException();
                 node.symlink = node;
@@ -96,6 +97,7 @@ public class G_Search4 {
                             break;
                         }
                     }
+                    if (node.parent.symlink == null) setSymlinks(node.parent);
                     node.symlink = delta(node.parent.symlink, c);
                 }
             }
@@ -123,6 +125,7 @@ public class G_Search4 {
         private Node delta(Node nd, char c) {
             if (nd.kids.containsKey(c)) return nd.kids.get(c);
             if (nd == root && !nd.kids.containsKey(c)) return root;
+            if (nd.symlink == null) setSymlinks(nd);
             return delta(nd.symlink, c);
         }
     }

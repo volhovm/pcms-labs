@@ -1,8 +1,10 @@
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import labs.stringops.G_Search4;
+
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Random;
+import java.util.StringTokenizer;
 
 /**
  * Created by volhovm on 3/23/14.
@@ -11,10 +13,42 @@ public class test {
     private static final Random rand = new Random();
 
     public static void main(String[] args) throws IOException {
-        PrintWriter scout = new PrintWriter(new FileWriter("search2.in"));
-        scout.print("aba\n");
-        for (int i = 0; i < 1000000; i++) {
-            scout.print((char)('a' + rand.nextInt('f' - 'a')));
+        PrintWriter scout = new PrintWriter(new FileWriter("search4.in"));
+        ArrayList<String> patterns = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            String s = "";
+            for (int j = 0; j < rand.nextInt(15) + 1; j++) {
+                s += (char) ('a' + rand.nextInt(10));
+            }
+            patterns.add(s);
+        }
+        String text = "";
+        for (int i = 0; i < 10000; i++) {
+            text += (char) ('a' + rand.nextInt(10));
+        }
+        scout.println(patterns.size());
+        patterns.stream().forEach(scout::println);
+        scout.print(text);
+        scout.flush();
+        scout.close();
+        G_Search4.main(null);
+        FastScanner scin = new FastScanner(new File("search4.out"));
+        ArrayList<Boolean> ans = new ArrayList<>();
+        for (int i = 0; i < patterns.size(); i++) {
+            String next = scin.next();
+            ans.add(Objects.equals(next, "YES"));
+        }
+        for (int i = 0; i < patterns.size(); i++) {
+            String pattern = patterns.get(i);
+            for (int j = 0; j < text.length() - pattern.length(); j++) {
+                for (int k = 0; k < pattern.length(); k++) {
+                    if (text.charAt(j + k) != pattern.charAt(k)) break;
+                    if (k == pattern.length() - 1)
+                        if (!ans.get(i)) {
+                            System.out.println(i);
+                        }
+                }
+            }
         }
         scout.close();
     }
@@ -60,6 +94,41 @@ public class test {
             String s = randomCharSequence(length);
             buffer.add(s);
             return s;
+        }
+    }
+
+    static class FastScanner {
+        BufferedReader br;
+        StringTokenizer st;
+
+        FastScanner(File f) throws IOException {
+            try {
+                br = new BufferedReader(new FileReader(f));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        String next() throws IOException {
+            while (st == null || !st.hasMoreTokens()) {
+                try {
+                    st = new StringTokenizer(br.readLine());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (NullPointerException e) {
+                    throw new IOException("EOF", e);
+                }
+
+            }
+            return st.nextToken();
+        }
+
+        int nextInt() throws IOException {
+            return Integer.parseInt(next());
+        }
+
+        double nextDouble() throws IOException {
+            return Double.parseDouble(next());
         }
     }
 }
