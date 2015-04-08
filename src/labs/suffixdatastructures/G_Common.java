@@ -1,28 +1,40 @@
 package labs.suffixdatastructures;
 /**
  * @author volhovm
- * Created on 4/1/15
+ * Created on 4/8/15
  */
 
 import java.io.*;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.StringTokenizer;
 
-public class B_Array {
+public class G_Common {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("array.in"));
-        scout = new PrintWriter(new File("array.out"));
-        char[] src = (scin.next() + "_").toCharArray();
+        scin = new FastScanner(new File("common.in"));
+        scout = new PrintWriter(new File("common.out"));
+        String part1 = scin.next();
+        String part2 = scin.next();
+        char src[] = (part1 + "`" + part2 + ((char)(((int) '`') - 1))).toCharArray();
+        int divider = part1.length();
         int[] p = suffArr(src);
-        for (int i = 1; i < src.length; i++) {
-            scout.print((p[i] + 1) + " ");
+        int[] lcp = suffArrToLcp(src, p);
+        int max = 0;
+        int maxi = -1;
+        for (int i = 0; i < lcp.length - 1; i++) {
+            if (p[i+1] > divider && p[i] < divider ||
+                    p[i+1] < divider && p[i] > divider) {
+                int currmax = lcp[i];
+                if (currmax > max) {
+                    max = currmax;
+                    maxi = p[i];
+                }
+            }
+        }
+        for (int i = 0; i < max; i++) {
+            scout.print(src[maxi + i]);
         }
         scout.close();
     }
-
     private static int[] suffArr(char[] src) {
         int n = src.length;
         int[] p = new int[n];   // for permutation
@@ -68,6 +80,28 @@ public class B_Array {
         }
         return p;
     }
+
+    private static int[] suffArrToLcp(char[] src, int[] p) {
+        int[] lcp = new int[src.length];
+        int[] rev = new int[src.length];
+        for (int i = 0; i < src.length; i++) rev[p[i]] = i;
+        int counter = 0;
+        for (int i = 0; i < src.length; i++) {
+            if (counter > 0) counter--;
+            if (rev[i] == src.length - 1) {
+                counter = 0;
+                lcp[src.length - 1] = -1;
+            } else {
+                int temp = p[rev[i] + 1];
+                while (Math.max(i + counter, temp + counter) < src.length
+                        && src[i + counter] == src[temp + counter])
+                    counter++;
+                lcp[rev[i]] = counter;
+            }
+        }
+        return lcp;
+    }
+
 
     public static FastScanner scin;
     public static PrintWriter scout;

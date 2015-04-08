@@ -13,42 +13,20 @@ public class test {
     private static final Random rand = new Random();
 
     public static void main(String[] args) throws IOException {
-        PrintWriter scout = new PrintWriter(new FileWriter("search4.in"));
-        ArrayList<String> patterns = new ArrayList<>();
-        for (int i = 0; i < 1000; i++) {
-            String s = "";
-            for (int j = 0; j < rand.nextInt(15) + 1; j++) {
-                s += (char) ('a' + rand.nextInt(10));
+        PrintWriter scout = new PrintWriter(new FileWriter("count.in"));
+        for (int i = 0; i < 100; i++) {
+            StringBuilder str = new StringBuilder();
+            for (int j = 0; j < rand.nextInt(40) + 10; j++) {
+                str.append(((char) (rand.nextInt(15) + 'a')));
             }
-            patterns.add(s);
+            scout.println(str.toString());
         }
-        String text = "";
-        for (int i = 0; i < 10000; i++) {
-            text += (char) ('a' + rand.nextInt(10));
-        }
-        scout.println(patterns.size());
-        patterns.stream().forEach(scout::println);
-        scout.print(text);
-        scout.flush();
-        scout.close();
-        G_Search4.main(null);
-        FastScanner scin = new FastScanner(new File("search4.out"));
-        ArrayList<Boolean> ans = new ArrayList<>();
-        for (int i = 0; i < patterns.size(); i++) {
-            String next = scin.next();
-            ans.add(Objects.equals(next, "YES"));
-        }
-        for (int i = 0; i < patterns.size(); i++) {
-            String pattern = patterns.get(i);
-            for (int j = 0; j < text.length() - pattern.length(); j++) {
-                for (int k = 0; k < pattern.length(); k++) {
-                    if (text.charAt(j + k) != pattern.charAt(k)) break;
-                    if (k == pattern.length() - 1)
-                        if (!ans.get(i)) {
-                            System.out.println(i);
-                        }
-                }
+        for (int i = 0; i < 100; i++) {
+            StringBuilder str = new StringBuilder();
+            for (int j = 0; j < rand.nextInt(399990) + 10; j++) {
+                str.append(((char) (rand.nextInt(26) + 'a')));
             }
+            scout.println(str.toString());
         }
         scout.close();
     }
