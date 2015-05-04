@@ -9,7 +9,7 @@ import java.util.stream.Collector;
  *         Created on 4/9/15
  */
 // There's something java8-specific in here!
-public class D_Automaton {
+public class D_automaton {
     public static void main(String[] args) throws IOException {
         scin = new FastScanner(new File("automaton.in"));
         scout = new PrintWriter(new File("automaton.out"));

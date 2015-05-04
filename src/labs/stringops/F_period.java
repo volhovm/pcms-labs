@@ -5,34 +5,22 @@ package labs.stringops;
  */
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.StringTokenizer;
 
-public class E_Search3 {
+public class F_period {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("search3.in"));
-        scout = new PrintWriter(new File("search3.out"));
-        String pattern = scin.next();
-        int n = pattern.length();
+        scin = new FastScanner(new File("period.in"));
+        scout = new PrintWriter(new File("period.out"));
         String text = scin.next();
-        if (n > text.length()) {
-            scout.write("0");
-            scout.close();
-            return;
+        int[] zf = zFunction(text);
+        int ans = zf.length;
+        for (int i = 0; i < text.length() / 2 + 1; i++) {
+            if (zf[i] == text.length() - i) {
+                ans = i;
+                break;
+            }
         }
-        String master = pattern + "#" + text;
-        String masterRev = new StringBuilder(pattern).reverse() + "#" + new StringBuilder(text).reverse();
-        int[] zf = zFunction(master);
-        int[] zfRev = zFunction(masterRev);
-        ArrayList<Integer> ans = new ArrayList<Integer>(master.length());
-        for (int i = 0; i < text.length() - n + 1; i++) {
-            int zSum = zf[n + i + 1] + zfRev[master.length() - i - n];
-            if (zSum > n - 2) ans.add(i + 1);
-        }
-        scout.println(ans.size());
-        for (int i : ans) {
-            scout.print(i + " ");
-        }
+        scout.print(ans);
         scout.close();
     }
 
@@ -55,7 +43,7 @@ public class E_Search3 {
     public static FastScanner scin;
     public static PrintWriter scout;
 
-    static class FastScanner {
+    private static class FastScanner {
         BufferedReader br;
         StringTokenizer st;
 

@@ -1,4 +1,5 @@
 package labs.suffixdatastructures;
+
 /**
  * @author volhovm
  * Created on 4/8/15
@@ -10,7 +11,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.StringTokenizer;
 
-public class E_Refrain {
+public class E_refrain {
     public static void main(String[] args) throws IOException {
         scin = new FastScanner(new File("refrain.in"));
         scout = new PrintWriter(new File("refrain.out"));

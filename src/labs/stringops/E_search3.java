@@ -4,35 +4,43 @@ package labs.stringops;
  * Created on 3/16/15
  */
 
-
 import java.io.*;
+import java.util.ArrayList;
 import java.util.StringTokenizer;
 
-public class D_Z {
+public class E_search3 {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("z.in"));
-        scout = new PrintWriter(new File("z.out"));
+        scin = new FastScanner(new File("search3.in"));
+        scout = new PrintWriter(new File("search3.out"));
+        String pattern = scin.next();
+        int n = pattern.length();
         String text = scin.next();
-        int[] zf = zFunction(text);
-        for (int i = 1; i < zf.length; i++) {
-            scout.write(zf[i] + " ");
+        if (n > text.length()) {
+            scout.write("0");
+            scout.close();
+            return;
+        }
+        String master = pattern + "#" + text;
+        String masterRev = new StringBuilder(pattern).reverse() + "#" + new StringBuilder(text).reverse();
+        int[] zf = zFunction(master);
+        int[] zfRev = zFunction(masterRev);
+        ArrayList<Integer> ans = new ArrayList<Integer>(master.length());
+        for (int i = 0; i < text.length() - n + 1; i++) {
+            int zSum = zf[n + i + 1] + zfRev[master.length() - i - n];
+            if (zSum > n - 2) ans.add(i + 1);
+        }
+        scout.println(ans.size());
+        for (int i : ans) {
+            scout.print(i + " ");
         }
         scout.close();
     }
 
-    private static int min(int a, int b) {
-        return a < b ? a : b;
-    }
-
-    private static int max(int a, int b) {
-        return a > b ? a : b;
-    }
-
-    private static int[] zFunction(String string) {
+    public static int[] zFunction(String string) {
         int[] zf = new int[string.length()];
         int l = 0, r = 0;
         for (int i = 1; i < string.length(); i++) {
-            zf[i] = max(0, min(r - i, zf[i - l]));
+            zf[i] = Math.max(0, Math.min(r - i, zf[i - l]));
             while (i + zf[i] < string.length() && string.charAt(zf[i]) == string.charAt(i + zf[i])) {
                 zf[i]++;
             }

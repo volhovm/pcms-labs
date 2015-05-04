@@ -5,33 +5,44 @@ package labs.stringops;
  */
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.StringTokenizer;
 
-public class C_Prefix {
+public class B_search2 {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("prefix.in"));
-        scout = new PrintWriter(new File("prefix.out"));
+        scin = new FastScanner(new File("search2.in"));
+        scout = new PrintWriter(new File("search2.out"));
+        String pattern = scin.next();
         String text = scin.next();
-        int[] prefix = new int[text.length()];
+        if (pattern.length() > text.length()) {
+            scout.print("0");
+            scout.close();
+            return;
+        }
+        String master = pattern + "#" + text;
+        int[] prefix = new int[master.length()];
         prefix[0] = 0;
         for (int i = 1; i < prefix.length; i++) {
             int t = prefix[i - 1];
-            while (t > 0 && text.charAt(i) != text.charAt(t)) {
+            while (t > 0 && master.charAt(i) != master.charAt(t)) {
                 t = prefix[t - 1];
             }
-            if (t > 0) {
-                if (text.charAt(i) == text.charAt(t)) {
-                    t++;
-                }
-            } else if (text.charAt(0) == text.charAt(i)) t++;
-            else t = 0;
+            if (t > 0 && master.charAt(i) == master.charAt(t) || master.charAt(0) == master.charAt(i)) {
+                t++;
+            }
             prefix[i] = t;
         }
-        for (int i = 0; i < prefix.length; i++) {
-            scout.write(prefix[i] + " ");
+        ArrayList<Integer> ans = new ArrayList<Integer>(master.length());
+        for (int i = pattern.length() * 2; i < master.length(); i++) {
+            if (prefix[i] == pattern.length()) ans.add(i - 2 * pattern.length());
+        }
+        scout.println(ans.size());
+        for (int i : ans) {
+            scout.print((i + 1) + " ");
         }
         scout.close();
     }
+
 
     public static FastScanner scin;
     public static PrintWriter scout;

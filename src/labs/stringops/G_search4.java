@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.StringTokenizer;
 
-public class G_Search4 {
+public class G_search4 {
     public static void main(String[] args) throws IOException {
         scin = new FastScanner(new File("search4.in"));
         scout = new PrintWriter(new File("search4.out"));

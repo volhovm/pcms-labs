@@ -8,7 +8,7 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.StringTokenizer;
 
-public class A_Trie {
+public class A_trie {
     public static void main(String[] args) throws IOException {
         scin = new FastScanner(new File("trie.in"));
         scout = new PrintWriter(new File("trie.out"));

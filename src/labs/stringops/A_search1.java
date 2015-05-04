@@ -1,45 +1,29 @@
 package labs.stringops;
 /**
  * @author volhovm
- * Created on 3/16/15
+ * Created on 3/15/15
  */
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.StringTokenizer;
 
-public class B_Search2 {
+public class A_search1 {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("search2.in"));
-        scout = new PrintWriter(new File("search2.out"));
+        scin = new FastScanner(new File("search1.in"));
+        scout = new PrintWriter(new File("search1.out"));
         String pattern = scin.next();
         String text = scin.next();
-        if (pattern.length() > text.length()) {
-            scout.print("0");
-            scout.close();
-            return;
-        }
-        String master = pattern + "#" + text;
-        int[] prefix = new int[master.length()];
-        prefix[0] = 0;
-        for (int i = 1; i < prefix.length; i++) {
-            int t = prefix[i - 1];
-            while (t > 0 && master.charAt(i) != master.charAt(t)) {
-                t = prefix[t - 1];
+        ArrayList<Integer> indexes = new ArrayList<>();
+        for (int i = 0; i < text.length() - pattern.length() + 1; i++) {
+            for (int j = 0; j < pattern.length(); j++) {
+                if (pattern.charAt(j) != text.charAt(i + j)) break;
+                if (j == pattern.length() - 1) indexes.add(i);
             }
-            if (t > 0 && master.charAt(i) == master.charAt(t) || master.charAt(0) == master.charAt(i)) {
-                t++;
-            }
-            prefix[i] = t;
         }
-        ArrayList<Integer> ans = new ArrayList<Integer>(master.length());
-        for (int i = pattern.length() * 2; i < master.length(); i++) {
-            if (prefix[i] == pattern.length()) ans.add(i - 2 * pattern.length());
-        }
-        scout.println(ans.size());
-        for (int i : ans) {
-            scout.print((i + 1) + " ");
-        }
+        scout.println(indexes.size());
+        indexes.stream().forEach(i -> scout.print((i + 1) + " "));
         scout.close();
     }
 

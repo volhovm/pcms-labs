@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.StringTokenizer;
 
-public class B_Array {
+public class B_array {
     public static void main(String[] args) throws IOException {
         scin = new FastScanner(new File("array.in"));
         scout = new PrintWriter(new File("array.out"));

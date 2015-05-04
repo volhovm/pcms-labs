@@ -8,36 +8,45 @@ import java.io.*;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 
-public class F_Count {
+public class G_common {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("count.in"));
-        scout = new PrintWriter(new File("count.out"));
-//        for (int j = 0; j < 200; j++) {
-            char[] src = (scin.next() + "`").toCharArray();
-            int[] p = suffArr(src);
-            int[] lcp = suffArrToLcp(src, p);
-            long sum = 0;
-            for (int i = 0; i < lcp.length - 1; i++) {
-                sum += lcp[i];
+        scin = new FastScanner(new File("common.in"));
+        scout = new PrintWriter(new File("common.out"));
+        String part1 = scin.next();
+        String part2 = scin.next();
+        char src[] = (part1 + "`" + part2 + ((char)(((int) '`') - 1))).toCharArray();
+        int divider = part1.length();
+        int[] p = suffArr(src);
+        int[] lcp = suffArrToLcp(src, p);
+        int max = 0;
+        int maxi = -1;
+        for (int i = 0; i < lcp.length - 1; i++) {
+            if (p[i+1] > divider && p[i] < divider ||
+                    p[i+1] < divider && p[i] > divider) {
+                int currmax = lcp[i];
+                if (currmax > max) {
+                    max = currmax;
+                    maxi = p[i];
+                }
             }
-            System.out.println(sum);
-            scout.println(((long) src.length * ((long) src.length - 1)) / 2 - sum);
-//        }
+        }
+        for (int i = 0; i < max; i++) {
+            scout.print(src[maxi + i]);
+        }
         scout.close();
     }
-
     private static int[] suffArr(char[] src) {
         int n = src.length;
         int[] p = new int[n];   // for permutation
         int[] c = new int[n];   // for pairs
-        int[] cnt = new int[Math.max(n, 27)]; // for counting
+        int[] cnt = new int[Math.max(n, 28)]; // for counting
 
         // counting sort
-        for (char aSrc : src) ++cnt[aSrc - 'a' + 1];
-        for (int i = 1; i < 27 && i < cnt.length; i++) // 28 for safety!
+        for (char aSrc : src) ++cnt[aSrc - 'a' + 2];
+        for (int i = 1; i < 28 && i < cnt.length; i++) // 28 for safety!
             cnt[i] += cnt[i - 1];
         // writeback
-        for (int i = 0; i < n; i++) p[--cnt[src[i] - 'a' + 1]] = i;
+        for (int i = 0; i < n; i++) p[--cnt[src[i] - 'a' + 2]] = i;
         c[p[0]] = 0;
         int classes = 1; // classes of equality
         for (int i = 1; i < n; i++) {
@@ -92,6 +101,7 @@ public class F_Count {
         }
         return lcp;
     }
+
 
     public static FastScanner scin;
     public static PrintWriter scout;

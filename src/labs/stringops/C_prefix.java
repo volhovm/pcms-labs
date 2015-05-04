@@ -1,32 +1,37 @@
 package labs.stringops;
 /**
  * @author volhovm
- * Created on 3/15/15
+ * Created on 3/16/15
  */
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.StringTokenizer;
 
-public class A_Search1 {
+public class C_prefix {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("search1.in"));
-        scout = new PrintWriter(new File("search1.out"));
-        String pattern = scin.next();
+        scin = new FastScanner(new File("prefix.in"));
+        scout = new PrintWriter(new File("prefix.out"));
         String text = scin.next();
-        ArrayList<Integer> indexes = new ArrayList<>();
-        for (int i = 0; i < text.length() - pattern.length() + 1; i++) {
-            for (int j = 0; j < pattern.length(); j++) {
-                if (pattern.charAt(j) != text.charAt(i + j)) break;
-                if (j == pattern.length() - 1) indexes.add(i);
+        int[] prefix = new int[text.length()];
+        prefix[0] = 0;
+        for (int i = 1; i < prefix.length; i++) {
+            int t = prefix[i - 1];
+            while (t > 0 && text.charAt(i) != text.charAt(t)) {
+                t = prefix[t - 1];
             }
+            if (t > 0) {
+                if (text.charAt(i) == text.charAt(t)) {
+                    t++;
+                }
+            } else if (text.charAt(0) == text.charAt(i)) t++;
+            else t = 0;
+            prefix[i] = t;
         }
-        scout.println(indexes.size());
-        indexes.stream().forEach(i -> scout.print((i + 1) + " "));
+        for (int i = 0; i < prefix.length; i++) {
+            scout.write(prefix[i] + " ");
+        }
         scout.close();
     }
-
 
     public static FastScanner scin;
     public static PrintWriter scout;
