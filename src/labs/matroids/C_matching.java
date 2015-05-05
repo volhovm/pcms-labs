@@ -48,8 +48,13 @@ public class C_matching {
             Arrays.fill(used, false);
             kuhn(maxIndex, used, matching, edges);
         }
+        int[] matchingRev = new int[matching.length];
+        Arrays.fill(matchingRev, -1);
         for (int i = 0; i < matching.length; i++) {
-            scout.print(matching[i] == -1 ? "0 " : (matching[i] + 1) + " ");
+            if (matching[i] != -1) matchingRev[matching[i]] = i;
+        }
+        for (int i = 0; i < matching.length; i++) {
+            scout.print(matchingRev[i] == -1 ? "0 " : (matchingRev[i] + 1) + " ");
         }
         scout.close();
     }
