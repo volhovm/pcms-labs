@@ -1,7 +1,9 @@
 package labs.matroids;
 
+import javafx.util.Pair;
+
 import java.io.*;
-import java.util.StringTokenizer;
+import java.util.*;
 
 /**
  * @author volhovm
@@ -13,11 +15,39 @@ public class E_cycles {
         scout = new PrintWriter(new File("cycles.out"));
         int n = scin.nextInt();
         int m = scin.nextInt();
-
+        int[] weight = new int[n];
+        for (int i = 0; i < n; i++) {
+            weight[i] = scin.nextInt();
+        }
+        HashSet<BitSet> cycles = new HashSet<>(m);
+        for (int i = 0; i < m; i++) {
+            int temp = scin.nextInt();
+            int curr = 0;
+            for (int j = 0; j < temp; j++) {
+                curr |= (1 << (scin.nextInt() - 1));
+            }
+            BitSet bs = new BitSet(curr);
+            cycles.add(bs);
+        }
+        ArrayList<Pair<Integer, Integer>> indexedWeights = new ArrayList<>();
+        for (int i = 0; i < weight.length; i++) {
+            indexedWeights.add(new Pair<>(weight[i], i));
+        }
+        Collections.sort(indexedWeights, (a, b) -> b.getKey().compareTo(a.getKey()));
+        BitSet currentSet = BitSet.zero();
+        long sumWeight = 0;
+        for (int i = 0; i < n; i++) {
+            BitSet newSet = currentSet.union(new BitSet(1 << indexedWeights.get(i).getValue()));
+            if (cycles.stream().noneMatch(s -> s.isSubsetOf(newSet))) {
+                currentSet = newSet;
+                sumWeight += indexedWeights.get(i).getKey();
+            }
+        }
+        scout.print(sumWeight);
         scout.close();
     }
 
-        private static class BitSet {
+    private static class BitSet {
         private final int set;
         private final int size;
 
@@ -29,6 +59,10 @@ public class E_cycles {
                 if ((1 << i) == ((1 << i) & set)) size++;
             }
             this.size = size;
+        }
+
+        public static BitSet singleton(int num) {
+            return new BitSet(1 << num);
         }
 
         public static BitSet zero() {
@@ -43,7 +77,7 @@ public class E_cycles {
             return new BitSet(set ^ (set & other.set));
         }
 
-        public BitSet unite(BitSet other) {
+        public BitSet union(BitSet other) {
             return new BitSet(set | other.set);
         }
 

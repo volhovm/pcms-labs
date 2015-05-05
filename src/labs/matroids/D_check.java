@@ -4,7 +4,6 @@ import java.io.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author volhovm
@@ -12,8 +11,6 @@ import java.util.stream.Stream;
  */
 public class D_check {
     public static void main(String[] args) throws IOException {
-//        testBitSet();
-        BitSet test = new BitSet((1 << 4) | (1 << 3) | 1 | (1 << 9) | (1 << 8));
         scin = new FastScanner(new File("check.in"));
         scout = new PrintWriter(new File("check.out"));
         int n = scin.nextInt();
@@ -27,7 +24,6 @@ public class D_check {
             }
             BitSet bs = new BitSet(curr);
             S.add(bs);
-//            if (bs.size != temp) System.err.println("DAF**!");
         }
         Consumer<Void> fail = a -> {
             scout.println("NO");
@@ -46,11 +42,10 @@ public class D_check {
             }
         }
         // 3 axiom
-
         for (BitSet A : S) {
             for (BitSet B : S.stream().sequential().filter(s -> s.size() == (A.size() - 1)).collect(Collectors.toList())) {
                 ArrayList<BitSet> items = A.sub(B).items();
-                if (items.stream().sequential().noneMatch(s -> S.contains(B.unite(s)))) {
+                if (items.stream().sequential().noneMatch(s -> S.contains(B.union(s)))) {
                     fail.accept(null);
                 }
             }
@@ -86,7 +81,7 @@ public class D_check {
             return new BitSet(set ^ (set & other.set));
         }
 
-        public BitSet unite(BitSet other) {
+        public BitSet union(BitSet other) {
             return new BitSet(set | other.set);
         }
 
