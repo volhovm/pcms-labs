@@ -1,23 +1,66 @@
 package labs.matroids;
 
 import java.io.*;
-import java.util.StringTokenizer;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author volhovm
  *         Created on 5/5/15
  */
-public class E_cycles {
+public class D_check {
     public static void main(String[] args) throws IOException {
-        scin = new FastScanner(new File("cycles.in"));
-        scout = new PrintWriter(new File("cycles.out"));
+//        testBitSet();
+        BitSet test = new BitSet((1 << 4) | (1 << 3) | 1 | (1 << 9) | (1 << 8));
+        scin = new FastScanner(new File("check.in"));
+        scout = new PrintWriter(new File("check.out"));
         int n = scin.nextInt();
         int m = scin.nextInt();
+        Set<BitSet> S = new HashSet<>(m);
+        for (int i = 0; i < m; i++) {
+            int temp = scin.nextInt();
+            int curr = 0;
+            for (int j = 0; j < temp; j++) {
+                curr |= (1 << (scin.nextInt() - 1));
+            }
+            BitSet bs = new BitSet(curr);
+            S.add(bs);
+//            if (bs.size != temp) System.err.println("DAF**!");
+        }
+        Consumer<Void> fail = a -> {
+            scout.println("NO");
+            scout.close();
+            System.exit(0);
+        };
+        // 1 axiom
+        if (!S.contains(BitSet.zero())) {
+            fail.accept(null);
+        }
+        // 2 axiom
+        for (BitSet s : S.stream().map(BitSet::subsets).reduce((a, b) -> {a.addAll(b);return a;})
+                .get().stream().distinct().collect(Collectors.toList())) {
+            if (!S.contains(s)) {
+                fail.accept(null);
+            }
+        }
+        // 3 axiom
 
+        for (BitSet A : S) {
+            for (BitSet B : S.stream().sequential().filter(s -> s.size() == (A.size() - 1)).collect(Collectors.toList())) {
+                ArrayList<BitSet> items = A.sub(B).items();
+                if (items.stream().sequential().noneMatch(s -> S.contains(B.unite(s)))) {
+                    fail.accept(null);
+                }
+            }
+        }
+
+        scout.println("YES");
         scout.close();
     }
 
-        private static class BitSet {
+    private static class BitSet {
         private final int set;
         private final int size;
 

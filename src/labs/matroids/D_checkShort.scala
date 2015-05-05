@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 /**
  * This solution does not work (but looks so pretty!)
  */
-object D_check {
+object D_checkShort {
   def main(args: Array[String]) {
     def write(s: String) = Files.write(Paths.get("check.out"), s.getBytes(StandardCharsets.UTF_8))
     val S: Set[Set[Int]] = scala.io.Source.fromFile("check.in").getLines().toList
