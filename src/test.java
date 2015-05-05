@@ -10,20 +10,10 @@ public class test {
     private static final Random rand = new Random();
 
     public static void main(String[] args) throws IOException {
-        PrintWriter scout = new PrintWriter(new FileWriter("count.in"));
-        for (int i = 0; i < 100; i++) {
-            StringBuilder str = new StringBuilder();
-            for (int j = 0; j < rand.nextInt(40) + 10; j++) {
-                str.append(((char) (rand.nextInt(15) + 'a')));
-            }
-            scout.println(str.toString());
-        }
-        for (int i = 0; i < 100; i++) {
-            StringBuilder str = new StringBuilder();
-            for (int j = 0; j < rand.nextInt(399990) + 10; j++) {
-                str.append(((char) (rand.nextInt(26) + 'a')));
-            }
-            scout.println(str.toString());
+        PrintWriter scout = new PrintWriter(new FileWriter("schedule.in"));
+        scout.println(50);
+        for (int i = 0; i < 50; i++) {
+            scout.println(rand.nextInt(10) + " " + rand.nextInt(20));
         }
         scout.close();
     }
