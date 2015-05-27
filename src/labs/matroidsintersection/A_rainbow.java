@@ -1,224 +1,232 @@
 package labs.matroidsintersection;
 
-import com.sun.org.apache.bcel.internal.generic.ARRAYLENGTH;
-
 import java.io.*;
-import java.lang.reflect.Array;
 import java.util.*;
 
 /**
  * Doesn't work, TL7
+ * <p>
+ * TODO Remove used -- DONE
+ * TODO Rewrite DSU without Akkerman -- DONE
+ * TODO Remove all new -- DONE
+ * TODO Outline all new out of loops -- DONE
+ * WTF
+ *
  * @author volhovm
  *         Created on 5/24/15
  */
 public class A_rainbow {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    private FastScanner scin;
+    private PrintWriter scout;
+    long start = System.currentTimeMillis();
+
+    public long track(String tag) {
+        long newStart = System.currentTimeMillis();
+        long delta = (newStart - start);
+        start = newStart;
+//        System.out.println(tag + ": " + delta);
+        return delta;
+    }
+
+    void start() throws IOException {
+        track("start");
         scin = new FastScanner(new File("rainbow.in"));
         scout = new PrintWriter(new File("rainbow.out"));
         int n = scin.nextInt();
         int m = scin.nextInt();
-        // vertex -> color
-        Edge[] edges = new Edge[m];
+        double start = System.currentTimeMillis();
+        int[] edgeFrom = new int[m];
+        int[] edgeTo = new int[m];
+        int[] edgeColor = new int[m];
         for (int i = 0; i < m; i++) {
-            int x = scin.nextInt() - 1;
-            int y = scin.nextInt() - 1;
-            int color = scin.nextInt() - 1;
-            edges[i] = new Edge(x, y, color, i);
+            edgeFrom[i] = scin.nextInt() - 1;
+            edgeTo[i] = scin.nextInt() - 1;
+            edgeColor[i] = scin.nextInt() - 1;
         }
-        boolean maxReached = false;
-        Set<Integer> set = new HashSet<>();
-//        Collection<Integer> set = new TreeSet<>(); // maxn = 100
-//        IntSet set = new IntSet(110); // 110 > maxn
-        DSU setDsu = new DSU(m);
-        boolean resetDsu = true;
-        set.add(0);
-        while (!maxReached) {
-            ArrayList<ArrayList<Integer>> exchange = new ArrayList<>(m);
-            for (int i = 0; i < m; i++) exchange.add(new ArrayList<>());
-            // iterate over all in S add if set's ok
-            DSU tempDsu = new DSU(n);
-            for (int i : set) {
-                for (int elem : set) {
-                    if (elem != i) tempDsu.union(edges[elem].from, edges[elem].to);
+
+        long preinit = 0, rl = 0, x1 = 0, x2 = 0, bfs = 0, endloop = 0;
+
+        System.out.println("read: " + track("read"));
+
+        boolean[] set = new boolean[m];
+        boolean[] colorUsed = new boolean[105];
+        DSU dsu = new DSU(n);
+        ArrayList<Integer> actualSet = new ArrayList<>(n);
+        ArrayList<Integer> otherSet = new ArrayList<>(m);
+        ArrayList<Integer> X1 = new ArrayList<>();
+        boolean[] X2 = new boolean[m];
+        List<Integer>[] exchange = new List[m];
+        Arrays.setAll(exchange, i -> new ArrayList<>(m));
+        Queue<Integer> queue = new ArrayDeque<>();
+        int[] ancestor = new int[m];
+
+        System.out.println("init: " + track("init"));
+        set[0] = true;
+        colorUsed[edgeColor[0]] = true;
+        outer:
+        while (true) {
+            actualSet.clear();
+            otherSet.clear();
+            for (int i = 0; i < set.length; i++)
+                if (set[i]) actualSet.add(i);
+                else otherSet.add(i);
+            // rebuild dsu for naive adding
+            dsu.reset();
+            for (int elem : actualSet) {
+                dsu.union(edgeFrom[elem], edgeTo[elem]);
+            }
+            // add vertices naively
+            for (int elem : otherSet) {
+                if (dsu.get(edgeFrom[elem]) != dsu.get(edgeTo[elem]) && !colorUsed[edgeColor[elem]]) {
+                    dsu.union(edgeFrom[elem], edgeTo[elem]);
+                    colorUsed[edgeColor[elem]] = true;
+                    set[elem] = true;
+                    continue outer;
+                }
+            }
+            Arrays.stream(exchange).forEach(List::clear);
+            preinit += track("preinit");
+
+            // left to right && right to left
+            for (int i : actualSet) {
+                Arrays.fill(colorUsed, false);
+                dsu.reset();
+                for (int elem : actualSet) {
+                    if (elem != i) {
+                        dsu.union(edgeFrom[elem], edgeTo[elem]);
+                        colorUsed[edgeColor[elem]] = true;
+                    }
                 }
                 // for all in X \ S check if can be in S
-                for (int j = 0; j < m; j++) {
-                    if (!set.contains(j)) {
-                        if (tempDsu.get(edges[j].from) != tempDsu.get(edges[j].to)) {
-                            exchange.get(i).add(j);
-                        }
+                for (int j : otherSet) {
+                    if (dsu.get(edgeFrom[j]) != dsu.get(edgeTo[j])) {
+                        exchange[i].add(j);
+                    }
+                    if (!colorUsed[edgeColor[j]]) {
+                        exchange[j].add(i);
                     }
                 }
-                tempDsu.reset();
             }
-            // iterate over all in S
-            {
-                boolean[] colorUsed = new boolean[110];
-                for (int i : set) {
-                    for (int elem : set) {
-                        if (elem != i) colorUsed[edges[elem].color] = true;
-                    }
-                    // for all in X \ S check if can be in S instead of i
-                    for (int j = 0; j < m; j++) {
-                        if (!set.contains(j)) {
-                            if (!colorUsed[edges[j].color]) {
-                                exchange.get(j).add(i);
-                            }
-                        }
-                    }
-                    Arrays.fill(colorUsed, false);
-                }
-            }
-            // Creating X2
-            Set<Integer> X2 = new HashSet<>();
-            {
-                boolean[] colorsUsed = new boolean[110];
-                for (int elem : set) colorsUsed[edges[elem].color] = true;
-                for (int i = 0; i < m; i++) {
-                    if (!set.contains(i) && !colorsUsed[edges[i].color]) X2.add(i);
-                }
-            }
+
+            rl += track("right->left && backwards");
 
             // Creating X1
-            Set<Integer> X1 = new HashSet<>();
-            {
-                if (resetDsu) {
-                    setDsu.reset();
-                    for (int elem : set) setDsu.union(edges[elem].from, edges[elem].to);
-                    resetDsu = false;
-                }
-                for (int i = 0; i < m; i++) {
-                    if (!set.contains(i) && setDsu.get(edges[i].from) != setDsu.get(edges[i].to)) X1.add(i);
-                }
+            X1.clear();
+            dsu.reset();
+            for (int elem : actualSet) dsu.union(edgeFrom[elem], edgeTo[elem]);
+            for (int i : otherSet) {
+                if (dsu.get(edgeFrom[i]) != dsu.get(edgeTo[i])) X1.add(i);
             }
 
-//            System.out.println("bfs " + System.currentTimeMillis());
+            x1 += track("X1");
+
+            // Creating X2
+            Arrays.fill(X2, false);
+            Arrays.fill(colorUsed, false);
+            for (int elem : actualSet) colorUsed[edgeColor[elem]] = true;
+            for (int i : otherSet) {
+                if (!set[i] && !colorUsed[edgeColor[i]]) X2[i] = true;
+            }
+
+            x2 += track("X2");
+
+            // check if X1 and X2 intersect
+            for (int elem : X1) {
+                if (X2[elem]) {
+                    set[elem] ^= true;
+                    continue outer;
+                }
+            }
+//
+            track("quickcheck");
+
             int endVertex = -1;
-            int[] ancestors = new int[m];
-            Arrays.fill(ancestors, -1);
-            ArrayDeque<Integer> queue = new ArrayDeque<>();
-            boolean[] used = new boolean[m];
-            X1.stream().forEach(queue::addLast);
-            X1.stream().forEach(i -> used[i] = true);
+            Arrays.fill(ancestor, -1);
+            queue.clear();
+            queue.addAll(X1);
+            queue.forEach(i -> ancestor[i] = i);
             while (!queue.isEmpty()) {
-                int curr = queue.removeFirst();
-                if (X2.contains(curr)) {
-                    // do something cool
+                int curr = queue.poll();
+                if (X2[curr]) {
                     endVertex = curr;
                     break;
                 }
-                for (int child : exchange.get(curr)) {
-                    if (!used[child]) {
-                        used[child] = true;
-                        ancestors[child] = curr;
-                        queue.addLast(child);
+                for (int child : exchange[curr]) {
+                    if (ancestor[child] == -1) {
+                        ancestor[child] = curr;
+                        queue.add(child);
                     }
                 }
             }
+
+            bfs += track("bfs");
+
 //            System.out.println("after bfs " + System.currentTimeMillis());
             if (endVertex == -1) {
-                maxReached = true;
-                continue;
+                break outer;
             }
-            for (; endVertex != -1; endVertex = ancestors[endVertex]) {
-//                System.out.println("mda test " + endVertex);
-                if (set.contains(endVertex)) {
-                    set.remove(endVertex);
-                    resetDsu = true;
-                } else {
-                    set.add(endVertex);
-                    if (!resetDsu) setDsu.union(edges[endVertex].from, edges[endVertex].to);
-                }
+            for (; ; endVertex = ancestor[endVertex]) {
+                System.out.println(endVertex);
+                set[endVertex] ^= true; // remove if present, add if not present
+                colorUsed[edgeColor[endVertex]] ^= true;
+                if (endVertex == ancestor[endVertex]) break;
             }
-            System.out.println("test " + System.currentTimeMillis());
+            endloop += track("endloop");
         }
 
-        scout.println(set.size());
-        for (int elem : set) scout.print((elem + 1) + " ");
+        actualSet.clear();
+        System.out.println("preinit: " + preinit);
+        System.out.println("r->l->r: " + rl);
+        System.out.println("x1:      " + x1);
+        System.out.println("x2:      " + x2);
+        System.out.println("bfs:     " + bfs);
+        System.out.println("end:     " + endloop);
+        for (int i = 0; i < set.length; i++) if (set[i]) actualSet.add(i);
+        scout.println(actualSet.size());
+        for (int elem : actualSet) scout.print((elem + 1) + " ");
         scout.close();
     }
+//
+//    private static class DSU {
+//        private int[] array;
+//
+//        public DSU(int size) {
+//            this.array = new int[size];
+//            reset();
+//        }
+//
+//        public void reset() {
+//            Arrays.setAll(array, i -> i);
+//        }
+//
+//        int get(int index) {
+//            return array[index] == index ? index : get(array[index]);
+//        }
+//
+//        void union(int a, int b) {
+//            int x = get(a);
+//            int y = get(b);
+//            array[y] = x;
+//        }
+//    }
 
-    private static class IntSet implements Iterable<Integer> {
-        private int[] array;
-        private int size;
-        int last = 0;
-
-        public IntSet(int n) {
-            this.array = new int[n];
-            this.size = 0;
-            Arrays.fill(array, -1);
-        }
-
-        public void add(int value) {
-            while (last < array.length && array[last] != -1) last++;
-            array[last++] = value;
-            size++;
-        }
-
-        public void remove(int value) {
-            for (int i = 0; i < array.length; i++) {
-                if (array[i] == value) {
-                    array[i] = -1;
-                    last = i;
-                    size--;
-                    break;
-                }
-            }
-        }
-
-        public boolean contains(int value) {
-            for (int i = 0; i < array.length; i++) {
-                if (array[i] == value) return true;
-            }
-            return false;
-        }
-
-        @Override
-        public Iterator<Integer> iterator() {
-            return new Iterator<Integer>() {
-                private int pos = 0;
-
-                @Override
-                public boolean hasNext() {
-                    return pos < array.length;
-                }
-
-                @Override
-                public Integer next() {
-                    int res = array[pos++];
-                    while (pos < array.length && array[pos] == -1) pos++;
-                    return res;
-                }
-            };
-        }
-
-        public int size() {
-            return size;
-        }
-    }
-
-    private static class Edge {
-        int from, to, color, id;
-
-        public Edge(int from, int to, int color, int id) {
-            this.from = from;
-            this.to = to;
-            this.color = color;
-            this.id = id;
-        }
-    }
-
-    private static class DSU {
+    private class DSU {
         DSUNode[] nodes;
 
         public DSU(int n) {
             nodes = new DSUNode[n];
-            reset();
+            for (int i = 0; i < nodes.length; i++) {
+                nodes[i] = new DSUNode(i, i, 1, -1);
+            }
         }
 
         public void reset() {
             for (int i = 0; i < nodes.length; i++) {
                 nodes[i] = new DSUNode(i, i, 1, -1);
+                nodes[i].min = i;
+                nodes[i].max = i;
+                nodes[i].count = 1;
+                nodes[i].parentIndex = -1;
             }
         }
 
@@ -268,8 +276,10 @@ public class A_rainbow {
         }
     }
 
-    private static FastScanner scin;
-    private static PrintWriter scout;
+    public static void main(String[] args) throws IOException, InterruptedException {
+        A_rainbow task = new A_rainbow();
+        task.start();
+    }
 
     private static class FastScanner {
         BufferedReader br;
