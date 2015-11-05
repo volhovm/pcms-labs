@@ -12,3 +12,4 @@ out/
 *.hi
 *.o
 *.run
+a.out
