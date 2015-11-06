@@ -1,12 +1,8 @@
-10 S
-S -> A
-A -> B
-B -> C
-C -> DI
-I -> sasi
-D -> E
-E -> F
-F -> Z
-Z -> X
-X ->
-
+7 A
+E -> O
+L -> E
+Z ->
+H ->
+C ->
+O ->
+D ->

@@ -10,12 +10,10 @@
 #include <set>
 using namespace std;
 
-// OK
-
 #define BIG_ALPHABET_SIZE 26
 #define SMALL_ALPHABET_SIZE 26
 
-//data elem = terminal int | nonterminal int
+// OK
 
 struct rule {
     int termvalue;
@@ -97,6 +95,7 @@ int main() {
             cerr << (char) (i + 'A') << " ";
         }
     }
+    cerr << endl;
 
     fout.close();
 }
