@@ -1,0 +1,14 @@
+7 S
+S -> sA
+S -> sB
+S -> sC
+A -> aB
+A -> aC
+B -> bC
+C -> c
+5
+sc
+sbc
+sac
+scc
+sabc
