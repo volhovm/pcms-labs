@@ -1,5 +1,6 @@
 *~
-*.out
+a.out
+b.out
 *.o
 *.hi
 *.run
