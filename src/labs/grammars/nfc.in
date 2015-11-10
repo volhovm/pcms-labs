@@ -1,0 +1,18 @@
+16 S
+S -> AB
+S -> AA
+S -> SS
+S -> BA
+S -> CB
+S -> BC
+S -> BB
+S -> DD
+S -> CD
+D -> BD
+D -> b
+D -> z
+A -> a
+B -> a
+A -> BC
+B -> z
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
