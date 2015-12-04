@@ -1,0 +1,14 @@
+13
+choice 1 2 3
+choice 2 4 5
+choice 3 6 7
+choice 2 8 9
+leaf 6
+leaf 3
+choice 2 10 11
+leaf 7
+leaf 2
+choice 1 12 13
+leaf 2
+leaf 1
+leaf 5
