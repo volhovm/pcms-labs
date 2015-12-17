@@ -2,4 +2,7 @@ start: s
 accept: ac
 reject: rj
 blank: _
-s _ -> ac 
+s _ -> ac _ ^
+s 0 -> n 0 >
+n 0 -> s 0 >
+n _ -> rj _ >

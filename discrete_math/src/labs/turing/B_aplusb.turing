@@ -1,0 +1,39 @@
+start: s
+accept: ac
+reject: rj
+blank: _
+
+s 0 -> prestart 0 <
+s 1 -> prestart 0 <
+
+prestart _ -> right_to_plus _ >
+
+decrement_left_pre 0 -> decrement_left_carry 1 <
+decrement_left_pre 1 -> right_to_plus 0 >
+
+decrement_left_carry 1 -> right_to_plus 0 >
+decrement_left_carry 0 -> decrement_left_carry 1 <
+decrement_left_carry _ -> right_to_plus_finish _ >
+
+right_to_plus 0 -> right_to_plus 0 >
+right_to_plus 1 -> right_to_plus 1 >
+right_to_plus + -> increment_right + >
+
+increment_right 0 -> increment_right 0 >
+increment_right 1 -> increment_right 1 >
+increment_right _ -> increment_left_pre _ <
+
+increment_left_pre 0 -> left_to_finish 1 <
+increment_left_pre 1 -> increment_left_carry 0 <
+
+increment_left_carry 0 -> left_to_plus 1 <
+increment_left_carry 1 -> increment_left_carry 0 <
+increment_left_carry + ->
+
+left_to_plus 0 -> left_to_plus 0 <
+left_to_plus 1 -> left_to_plus 1 <
+left_to_plus + -> decrement_left_pre 1 <
+
+right_to_plus_finish 0 -> right_to_plus_finish _ >
+right_to_plus_finish 1 -> right_to_plus_finish _ >
+right_to_plus_finish + -> increment_and_stop + >

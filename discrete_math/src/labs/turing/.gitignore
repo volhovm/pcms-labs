@@ -3,3 +3,6 @@
 !.gitignore
 !*.cpp
 !*.turing
+!*.pdf
+!*.py
+!*.hs
