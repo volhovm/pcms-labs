@@ -1,4 +1,4 @@
-start: s
+output="""start: s
 accept: ac
 reject: rj
 blank: _
@@ -1865,4 +1865,10 @@ cleanup _    -> getback _ >
 
 getback _    -> getback _ >
 getback 0    -> ac     0 ^
-getback 1    -> ac     1 ^
+getback 1    -> ac     1 ^"""
+
+
+f = open("factorial.out", "w")
+f.write(output)
+f.close()
+exit(0)
