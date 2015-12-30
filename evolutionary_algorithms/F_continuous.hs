@@ -156,10 +156,14 @@ emulate EmulateState{..} = do
     conv (i, j) = 2*i + j
   newstate ← readArray automaton index
   (_,(_,n2)) ← getBounds matrix
-  forM_ newset (\ind → do
+  forM_ newset (\ind → do -- в какую производную добавляем
+    -- коэфф. перед переменной, выносим за скобку
+    let localCoeff = M.findWithDefault 228 ind newtrace
     forM_ (M.assocs newtrace) (\(ind2, indcount) → do
-      addArray matrix (conv ind, conv ind2) $ coeff * cast indcount)
-    addArray matrix (conv ind, n2) $ coeff * head outs)
+      addArray matrix (conv ind, conv ind2) $
+        coeff * cast (localCoeff * indcount))
+    addArray matrix (conv ind, n2) $
+      coeff * head outs * (cast localCoeff))
   emulate $ EmulateState { state = newstate
                          , path = tail path
                          , outs = tail outs
@@ -181,7 +185,7 @@ main = processIO $ \input output → do
                                       writeArray automata (i, 1) (b-1))
   _ ← loopIO str3 (fillMatrix automata solution)
 --  printArray automata
---  printArray solution
+  printArray solution
 --  putStrLn "------------------------SOLVING MATRIX-----------------------_"
   solveMatrix solution
  -- printArray solution
