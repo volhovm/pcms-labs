@@ -22,6 +22,7 @@ import           Data.Char
 import           Data.Int
 import           Data.List                         hiding (takeWhile)
 import qualified Data.Map.Strict                   as M
+import qualified Data.HashSet                      as S
 import           Prelude                           hiding (takeWhile)
 import           System.Random
 import           System.IO
@@ -159,21 +160,36 @@ randomAutomaton statesN = do
         formatDir 1 = R
         formatDir _ = M
 
-allAutomatons :: Int → [IO Automaton]
-allAutomatons statesN = do
+allWrites :: Int → [Int → Automaton → IO ()]
+allWrites statesN = do
   o1 ← [(0::Int)..statesN-1]
   o2 ← [(0::Int)..statesN-1]
-  o3 ← [(0::Int)..statesN-1]
-  o4 ← [(0::Int)..statesN-1]
-  o5 ← [(0::Int)..statesN-1]
-  o6 ← [(0::Int)..statesN-1]
-  os ← [o1, o2, o3, o4, o5, o6]
   m1 ← [L, R, M]
   m2 ← [L, R, M]
+  return $ \row aut → writeArray aut row $ EdgePair (Edge m1 o1) (Edge m2 o2)
+
+allAutomatons :: Int → [IO Automaton]
+allAutomatons statesN = do
+  writes ← sublists statesN (allWrites statesN)
   return $ do
     (aut :: Automaton) ← newArray (0, statesN-1) NoEdges
-    forM_ [0..statesN-1] (\n → writeArray aut n $ EdgePair (Edge m1 o1) (Edge m2 o2))
+    forM_ [0..statesN-1] (\n → (writes !! n) n aut)
     return aut
+  where sublists :: Int → [a] → [[a]]
+        sublists k list = [(list !! i):xs | i ← [0..(length list - 1)],
+                                            xs ← sublists (k-1) (withoutelem i list)]
+        withoutelem i list = let (_:xs, xs') = splitAt (i+1) list in xs ++ xs'
+
+hasUnreachableEdges :: Automaton → IO Bool
+hasUnreachableEdges aut = do
+  (0, n) ← getBounds aut
+  thisset ← bfs aut 0 S.empty
+  return $ (S.fromList [0..n]) == thisset
+  where bfs :: Automaton → Int → S.HashSet Int → IO (S.HashSet Int)
+        bfs aut state used = if (state `S.member` used) then return used
+                         else do (EdgePair (Edge _ l) (Edge _ r)) ← readArray aut state
+                                 let newused = state `S.insert` used
+                                 S.union <$> (bfs aut l newused) <*> (bfs aut r newused)
 
 sol2 :: IO Automaton
 sol2 = do
@@ -198,16 +214,19 @@ main = processIO $ \input output → do
   forM_ [0..2] (\s → forkIO $ loopFind 0 n m totalApples k
                      output fieldList bestResult isExit allAuts)
   loopFind 0 n m totalApples k output fieldList bestResult isExit allAuts
-  where loopFind j n m totalApples k output fieldList bestResult isExit allAuts =
+  where
+    loopFind j n m totalApples k output fieldList bestResult isExit allAuts =
           do ex ← readMVar isExit
              when (ex) exitSuccess
 
              allauts ← readMVar allAuts
-             putStrLn $ "Length: " ++ (show $ length allauts)
-
              when (null allauts) exitFailure
-             autprod ← modifyMVar allAuts (\(a:as) → return (as,a))
+             autprod ← modifyMVar allAuts (\(a:as) → do
+                                            putStrLn $ "Length: " ++ (show $ length allauts)
+                                            return (as,a))
              aut ← autprod
+             isBad ← hasUnreachableEdges aut
+             when isBad (loopFind j n m totalApples k output fieldList bestResult isExit allAuts)
 
              field ← newListArray ((0,0),(m-1,m-1)) $ map Apple $ concat fieldList
              res ← emulateExecution field aut totalApples
