@@ -5,6 +5,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Main where
 
+-- that's kind of solution to J task, but doesn't work well & fast
+-- possibly works best with convex polygons
+-- basically, it finds maximum of a metric function on the plain
+-- but in this task we can have more than one
+
 import           Control.Applicative
 import           Control.Monad
 import qualified Data.ByteString.Char8 as BS
@@ -26,7 +31,6 @@ instance HasResolution E24 where
 -- | resolution of 10^-21
 type Yocto  = Fixed E24
 
-
 newtype StateT s m a = StateT { runState :: s → m (s, a) }
 type Parser = StateT BS.ByteString (Either String)
 
@@ -47,6 +51,9 @@ int = StateT $ \s → case BS.readInt s of
   Nothing → Left "Couldn't parse int"
   Just (i', s')  → Right (s', cast i')
 
+yocto :: Parser Yocto
+yocto = StateT $ \s → let (pref, inf) = BS.span (\x → x `elem` ("0123456789.-+" :: String)) s in
+                        Right (inf, (read $ BS.unpack pref) :: Yocto)
 
 (<~>) :: (Char → Bool) → (Char → Bool) → (Char → Bool)
 (<~>) foo1 foo2 c = foo1 c || foo2 c
@@ -82,8 +89,11 @@ cast :: (Num a, Integral a, Num b) ⇒ a → b
 cast = fromInteger . toInteger
 
 parsePoint :: Parser Point
-parsePoint = Point <$> (cast <$> (int <* skipchar))
-                   <*> (cast <$> (int <* skipchar))
+--parsePoint = Point <$> (cast <$> (int <* skipchar))
+--                   <*> (cast <$> (int <* skipchar))
+
+parsePoint = Point <$> (yocto <* skipchar)
+                   <*> (yocto <* skipchar)
 
 parseInput :: Parser (Int, [Point])
 parseInput = do
@@ -143,11 +153,11 @@ main = processIO $ \input output → do
       firststep = if (abs $ r - l) < 1000 ||
                      (abs $ u - d) < 1000
                   then 1
-                  else 512
+                  else 4096
       firstmin = findMinimum (l-1) (r+1) (d-1) (u+1) firststep point1 points
       maxiterations = 25
-  --putStrLn $ "Range: " ++ show maxs
-  --putStrLn $ "Firstmin: " ++ show firstmin
+  putStrLn $ "Range: " ++ show maxs
+  putStrLn $ "Firstmin: " ++ show firstmin
   result ← mainLoop (firststep / 2) 0 (fst firstmin) (snd firstmin) $
    \step iteration point@(Point px py) val →
      if iteration == maxiterations
@@ -161,7 +171,7 @@ main = processIO $ \input output → do
                                newstep
                                point
                                points
-             --putStrLn $ show step ++ " " ++ show newpoint ++ " " ++ show newval
+             putStrLn $ show step ++ " " ++ show newpoint ++ " " ++ show newval
              return $ Right (newstep, iteration + 1, newpoint, newval)
   let sqrt' = sqrt . read . show
   hPutStrLn output $ show (snd result) ++ "\n" ++ show (fst result)
