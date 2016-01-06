@@ -1,5 +1,5 @@
 CC=clang++
-CFLAGS=-std=c++11
+CFLAGS=-std=c++11 -D_GLIBCXX_DEBUG -g -fsanitize=address
 GHC=ghc
 
 all: J Jinter
