@@ -66,19 +66,6 @@ ostream& operator<<(ostream& os, const event& ev) {
     return os;
 }
 
-inline int turn(point a, point b) {
-    long long int turnvalue = ((1ll * a.x * b.y) -
-                               (1ll * a.y * b.x));
-    return turnvalue > 0 ? 1 : turnvalue < 0 ? -1 : 0;
-}
-
-inline int turn(point a, point b, point c, point d) {
-    return turn(b - a, d - c);
-}
-
-inline int turn(point a, point b, point c) {
-    return turn (a, b, a, c);
-}
 
 bool intersects(segment &a, segment &b) {
     if (turn(a.start, a.end, b.start) *
