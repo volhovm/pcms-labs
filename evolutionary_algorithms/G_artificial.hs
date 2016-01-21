@@ -22,6 +22,7 @@ import           Data.Either                       (rights)
 import           Data.List                         (sortOn, nubBy)
 import qualified Data.Map.Strict                   as M
 import qualified Data.HashSet                      as S
+import           Numeric
 import           Prelude                           hiding (takeWhile,log)
 import           System.Random
 import           System.IO
@@ -34,28 +35,36 @@ import           Data.List                         hiding (takeWhile)
 -- Coeffs
 ----------------------------------------------------------------------
 
-filename = "./artificialtests/test9"
+filename = "./artificialtests/test8"
 -- start state, transaction, movement
 logsOn = False
 mutateArray = [0, 2, 4]
-generationSize = 500        -- size of mutants
-maxStepsTotal = 300         -- max steps number (not emulating more)
-sndMutationPrb = 0.2        -- double mutant?
-canMutatePart = 1           -- inf -- only elite mutates. 1 -- everybody
-restartProb = 0.0008        -- probability of destroying everybody
-eliteStrangers = 3          -- randoms, who mutate as elite. at least 1
+generationSize = 1000        -- size of mutants
+maxStepsTotal = 58           -- max steps number (not emulating more)
+sndMutationPrb = 0.2         -- double mutant?
+newgenPart = 3
+restartProb = 0.00005        -- probability of destroying everybody
+eliteStrangers = 3           -- randoms, who mutate as elite. at least 1
+bestGuysProb = 0.005
 eliteSize = 5
-strangers = 30              -- strangers,
-eliteDeathChance = 0.005
-threadNum = 3
+strangers = 100              -- strangers,
+eliteDeathChance = 0.0002
+threadNum = 4
 --fitnessC = 0.5
 
-withProbability p m d = do
+withProb :: Double → IO a → IO a → IO a
+withProb p m d = do
   let n :: Int
       n = ceiling $ 1 / p
   chance ← randomRIO (0,n)
   if chance == (n `div` 2)
   then m else d
+
+withProb' :: Double → IO () → IO ()
+withProb' p m = withProb p m (return ())
+
+round' :: Int → Double → Double
+round' n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
 
 -- Parsing
 ----------------------------------------------------------------------
@@ -175,7 +184,7 @@ mutate aut@Automaton{..} = do
       vr i = (sum (take (i+1) mutateArray)) * el
   case ch of
     -- random state
-    a | a < (vr 0) → do return Automaton {startState = rand0, ..}
+    a | a < (vr 0) → do return Automaton {startState = 0, ..}
     -- random transaction
     a | a < (vr 1) → do (EdgePair e1@(Edge m1 _) e2@(Edge m2 _)) ←
                           readArray autarr rand0
@@ -218,22 +227,21 @@ turnRight DR = DD
 turnRight DD = DL
 data EmulateState = EmulateState { applesLeft :: Int
                                  , totalSteps :: Int
-                                 , visited :: S.HashSet (Int,Int)
                                  , efield :: Field
                                  , aut :: Automaton
                                  , position :: (Int,Int)
                                  , direction :: Direction
                                  , state :: Int
+                                 , verbose :: Bool
                                  }
 
 instance Show EmulateState where
   show EmulateState{..} = "apples left: " ++ show applesLeft ++ ", " ++
-                          "total steps: " ++ show totalSteps ++ ", " ++
-                          "states visited: " ++ show (S.size visited)
+                          "total steps: " ++ show totalSteps
 
 loopEm :: EmulateState → IO EmulateState
-loopEm s@EmulateState{..} | applesLeft <= 0   = log "Nice" >> return s
-loopEm s@EmulateState{..} | applesLeft < 0    = log "WTF!!" >> return s
+loopEm s@EmulateState{..} | applesLeft == 0 = log "Nice" >> return s
+loopEm s@EmulateState{..} | applesLeft < 0  = log "WTF!!" >> return s
 loopEm s@EmulateState{..} | totalSteps >= maxStepsTotal = return s
 loopEm EmulateState{..} = do
   let Automaton{..} = aut
@@ -248,6 +256,7 @@ loopEm EmulateState{..} = do
   (EdgePair a b) ← readArray autarr state
   let (Edge move newstate) = if isAp then b else a
   when (isAp && move == M) $ writeArray efield nextcell $ Apple False
+  when (verbose) (putStrLn (show $ totalSteps + 1) >> printArray efield)
   loopEm EmulateState{ applesLeft = (if isAp && move == M
                                      then (\x → x-1) else id) applesLeft
                      , position = if move == M then nextcell else position
@@ -257,13 +266,12 @@ loopEm EmulateState{..} = do
                                     R → turnRight direction
                      , state = newstate
                      , totalSteps = totalSteps + 1
-                     , visited = S.insert position visited
                      , ..
                      }
 
-emulateExecution :: Field → Automaton → Int → Int →
+emulateExecution :: Field → Automaton → Int → Int → Bool →
                     IO (Double, EmulateState)
-emulateExecution field' aut@Automaton{..} apples maxSteps = do
+emulateExecution field' aut@Automaton{..} apples maxSteps verbose = do
   field ← copyArray field'
   st@EmulateState{..} ←
     loopEm EmulateState { position = (0,0)
@@ -272,7 +280,6 @@ emulateExecution field' aut@Automaton{..} apples maxSteps = do
                         , state = startState
                         , efield = field
                         , applesLeft = apples
-                        , visited = S.empty
                         , ..
                         }
   return (100 / (0.00000000000002 + cast applesLeft +
@@ -284,12 +291,15 @@ randomAutomaton :: Int → IO Automaton
 randomAutomaton statesN = do
   let n = statesN - 1
   (autarr :: AutArray) ← newArray (0, statesN-1) NoEdges
-  startState ← randomRIO (0, n)
+--  startState ← randomRIO (0, n)
+  let startState = 0
   forM_ [0..n] $ \i → do
     o1 ← randomRIO (0, n)
     o2 ← randomRIO (0, n)
     (m1 :: Movement) ← toEnum <$> randomRIO (0, 2)
-    (m2 :: Movement) ← toEnum <$> randomRIO (0, 2)
+    (m2 :: Movement) ← withProb (0.2)
+      (toEnum <$> randomRIO (0, 2))
+      (return M)
     writeArray autarr i $ EdgePair (Edge m1 o1) (Edge m2 o2)
   return $ Automaton{..}
 
@@ -313,6 +323,8 @@ data EvolState = EvolState { j :: Integer
                            , totalApples :: Int
                            , generation :: [Automaton]
                            , resultMV :: MVar Automaton
+                           , bestGuys :: MVar [Automaton]
+                           , isMixer :: Bool
                            }
 
 randomAutomatonWChecks :: Int → IO Automaton
@@ -329,60 +341,68 @@ evolLoop EvolState{..} = do
 --  emulated ← rights <$> forkMapM
 --    (\a → ((,) a) <$> emulateExecution field a totalApples maxSteps) generation
   emulated ← mapM
-    (\a → ((,) a) <$> emulateExecution field a totalApples maxSteps)
+    (\a → ((,) a) <$> emulateExecution field a totalApples maxSteps False)
     generation
 --  emulated ← mapParM threadNum
 --    (\a → ((,) a) <$> emulateExecution field a totalApples maxSteps)
 --    generation
   log "Computed fitness"
   let species = reverse $ sortOn (fst . snd) emulated
-      elite = if length species > eliteSize
-              then take eliteSize $ map fst species
-              else map fst species
+      elite = take eliteSize $
+              nubBy (\a b → autarr a == autarr b) $
+              map fst species
       king = head elite
       kingStats = snd $ snd $ head species
-  putStrLn $ show j ++ ". King stats: " ++ (show $ snd $ head species)
+  putStr $ show j ++ ". "
+  putStr $ (showGFloat (Just 3) (fst $ snd $ head species) "") ++ ", "
+  putStr $ show $ snd $ snd $ head species
+  putStrLn $ if isMixer then " ***" else ""
   log $ "Elite: " ++ (unlines $ map (show . snd) (take 10 species))
   log ""
 --  threadDelay $ 20*100000
-  if totalSteps kingStats <= maxSteps &&
+  if totalSteps kingStats == maxSteps &&
      applesLeft kingStats == 0
   then do _ ← tryPutMVar resultMV king
           return ()
   else do
-    log "Creating new generation"
-    let elite' = nubBy (\a b → autarr a == autarr b) elite
-    elite ← withProbability eliteDeathChance
-               -- boom, a comet crushed!
+    withProb' bestGuysProb $ modifyMVar bestGuys $
+      \bg → return (nubBy (\a b → autarr a == autarr b) (king:bg), ())
+    elite ← withProb bestGuysProb (if isMixer
+                                   then (++) elite <$> (readMVar bestGuys)
+                                   else return elite)
+                                  (return elite)
+    elite ← withProb eliteDeathChance
+               -- boom, a comet crushed into island!
               (do putStrLn "KILL THE ELITE!!!"
-                  return $ (drop (eliteSize `div` 2) elite'))
-              (return elite')
+                  return $ (drop (eliteSize `div` 2) elite))
+              (return elite)
     elite ← do strgrs ← replicateM eliteStrangers $
                  randomAutomatonWChecks maxStates
                return $ strgrs ++ elite
+    generation ← withProb 0.5 (do strgrs ← replicateM strangers $
+                                           randomAutomatonWChecks maxStates
+                                  return $ strgrs ++ generation)
+                              (return generation)
     generation ← iterateUntilM
       ((> generationSize) . length)
-      (\gen → do let proportion = min (length gen - 1) $
-                       2 + (length gen - 1) `div` canMutatePart
-                 rdm1 ← randomRIO (0, proportion)
+      (\gen → do let part = min (length gen - 1)
+                                (max (length elite - 1) $
+                                     (length gen - 1) `div` newgenPart)
+                 rdm1 ← randomRIO (0, length gen - 1)
                  rdm0 ← randomIO
                  if rdm0 then do
                    (mutated :: Automaton) ←
                      mutate =<< (copyAutomaton $ gen !! rdm1)
-                   mutated ← withProbability sndMutationPrb
+                   mutated ← withProb sndMutationPrb
                      (mutate mutated) (return mutated)
                    return $ gen ++ [mutated]
                  else do
                    rdm2 ← iterateUntil ((/=) rdm1) $
-                            randomRIO (0, (proportion))
+                            randomRIO (0, (length gen - 1))
                    (ch1, ch2) ← crossover (gen !! rdm1) (gen !! rdm2)
                    return $ gen ++ [ch1, ch2])
       elite
-    generation ← withProbability 0.5 (do strgrs ← replicateM strangers $
-                                           randomAutomatonWChecks maxStates
-                                         return $ strgrs ++ generation)
-                                     (return generation)
-    withProbability restartProb
+    withProb restartProb
       -- One more time
       (do putStrLn "Meh, let's begin from the end"
           emulateEvolution EvolState{..})
@@ -414,14 +434,24 @@ main = processIO $ \input output → do
 
 -- It's OK not to initialize generation here
   resultMV ← newEmptyMVar
-  replicateM_ threadNum $ forkIO $ emulateEvolution $
+  bestGuys ← newMVar []
+  replicateM_ (threadNum-1) $ forkIO $ emulateEvolution $
      EvolState { maxStates = n
                , maxSteps = k
                , j = 0
+               , isMixer = False
                , ..}
+  forkIO $ emulateEvolution $
+     EvolState { maxStates = n
+               , maxSteps = k
+               , j = 0
+               , isMixer = True
+               , ..}
+
   result ← readMVar resultMV
 -- void $ normalizeAutomaton result
   putStrLn "Succeeded"
+--  _ ← emulateExecution field result totalApples n True
   printAutomaton result output
 
 
