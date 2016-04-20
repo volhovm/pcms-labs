@@ -187,7 +187,7 @@ instance Show PB where
 
 getTree :: IO (Tree String)
 getTree = do
-  test0 <- openFile "test4.in" ReadMode
+  test0 <- openFile "test5.in" ReadMode
   toTreePA <$> parseGrammar test0
 
 cast = fromInteger . toInteger
@@ -214,5 +214,5 @@ main = do
             centerXY #
             pad 1.1
     print maxStringLength
-    renderSVG "diagram.svg" (mkWidth (500 * max 1 (cast maxStringLength / 3))) svg
+    renderSVG "diagram.svg" (mkWidth (min (500 * max 1 (cast maxStringLength / 3)) 2000)) svg
     void $ T.shell "xdg-open ./diagram.svg" T.empty
