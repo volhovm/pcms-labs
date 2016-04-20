@@ -207,11 +207,12 @@ main = do
                       lw 2)
                 (~~)
                 (symmLayout'
-                     (with & slHSep .~ (max 1.5 (cast maxStringLength)) &
+                     (with & slHSep .~ max 1.5 (cast maxStringLength) &
                       slVSep .~
                       1.5)
                      tree) #
             centerXY #
             pad 1.1
-    renderSVG "diagram.svg" (mkWidth 1000) svg
+    print maxStringLength
+    renderSVG "diagram.svg" (mkWidth (500 * max 1 (cast maxStringLength / 3))) svg
     void $ T.shell "xdg-open ./diagram.svg" T.empty
