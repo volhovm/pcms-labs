@@ -20,9 +20,10 @@ import           Data.Either.Combinators          (fromLeft', fromRight',
 import           Data.Tree                        (Tree (..))
 import           Data.Tree.Pretty                 (drawVerticalTree)
 import           Debug.Trace                      (trace)
-import           Diagrams.Backend.SVG
-import           Diagrams.Prelude
-import           Diagrams.TwoD.Layout.Tree
+import           Diagrams.Backend.SVG             (SVG (..), renderSVG)
+import           Diagrams.Prelude                 (( # ), (&), (.~), (<>), (~~))
+import qualified Diagrams.Prelude                 as D
+import qualified Diagrams.TwoD.Layout.Tree        as D
 import           System.IO                        (Handle, IOMode (ReadMode),
                                                    openFile)
 import qualified Turtle                           as T
@@ -97,7 +98,6 @@ lexicalAnalyzer handle = do
 -- Part 3
 
 
-data ParserError = ParserError String
 type Parser a = ExceptT String (State [Token]) a
 
 data PA = PAPrefix Integer PB
@@ -109,11 +109,6 @@ data PB = (:+) PA
         | (:++) PA PB
         | (:--) PA PB
         | (:**) PA PB
-
-{-
-A → n B | n
-B → A * | A + | A - | A * B | A + B | A - B
--}
 
 popToken :: Parser Token
 popToken = do
@@ -139,7 +134,7 @@ parsePB :: Parser PB
 parsePB = do
     a <- parsePA
     opToken <- popToken
-    bBoxed <- (Just <$> parsePB) `catchError` (const $ return Nothing)
+    bBoxed <- (Just <$> parsePB) `catchError` const (return Nothing)
     case (opToken, bBoxed) of
         ((:+:),Nothing) -> return $ (:+) a
         ((:-:),Nothing) -> return $ (:-) a
@@ -168,9 +163,11 @@ parseGrammar handle = do
 prettyPrintTree :: Tree String -> String
 prettyPrintTree = drawVerticalTree
 
+toTreePA :: PA -> Tree String
 toTreePA (PANum i) = Node "A" [Node (show i) []]
 toTreePA (PAPrefix i pb) = Node "A" [Node (show i) [], toTreePB pb]
 
+toTreePB :: PB -> Tree String
 toTreePB ((:+) pa) = Node "B" [toTreePA pa, Node "+" []]
 toTreePB ((:-) pa) = Node "B" [toTreePA pa, Node "-" []]
 toTreePB ((:*) pa) = Node "B" [toTreePA pa, Node "*" []]
@@ -199,20 +196,25 @@ main :: IO ()
 main = do
     tree <- getTree
     let maxStringLength = maximum $ fmap length tree
-        svg :: QDiagram SVG V2 Double Any
+        svg :: D.QDiagram SVG D.V2 Double D.Any
         svg =
-            renderTree
+            D.renderTree
                 (\(a :: String) ->
-                      text a <> roundedRect (cast $ length a) 1.2 0.1 # fc grey #
-                      lw 2)
+                      D.text a <>
+                      D.roundedRect (cast $ length a) 1.2 0.1 #
+                      D.fc D.grey #
+                      D.lw 2)
                 (~~)
-                (symmLayout'
-                     (with & slHSep .~ max 1.5 (cast maxStringLength) &
-                      slVSep .~
-                      1.5)
+                (D.symmLayout'
+                     (D.with &
+                      D.slHSep .~ max 1.5 (cast maxStringLength) &
+                      D.slVSep .~ 1.5)
                      tree) #
-            centerXY #
-            pad 1.1
+            D.centerXY #
+            D.pad 1.1
     print maxStringLength
-    renderSVG "diagram.svg" (mkWidth (min (500 * max 1 (cast maxStringLength / 3)) 2000)) svg
+    renderSVG
+        "diagram.svg"
+        (D.mkWidth (min (500 * max 1 (cast maxStringLength / 3)) 2000))
+        svg
     void $ T.shell "xdg-open ./diagram.svg" T.empty
