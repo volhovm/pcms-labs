@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import           Control.Monad             (void, when)
-import           Control.Monad.Except      (runExceptT)
+import qualified Data.ByteString.Char8     as BS
 import           Data.Either.Combinators   (fromLeft', fromRight', isLeft)
 import           Data.Tree                 (Tree (..))
 import           Data.Tree.Pretty          (drawVerticalTree)
@@ -20,7 +20,7 @@ import           Parser
 
 parseGrammar :: Handle -> IO PA
 parseGrammar handle = do
-    tokens <- runExceptT (lexicalAnalyzer handle)
+    tokens <- lexicalAnalyzer <$> BS.hGetContents handle
     when (isLeft tokens) $ error $ "Lexer failed: " ++ show (fromLeft' tokens)
     putStrLn $ "Tokens: " ++ show tokens
     let parsed = runParser $ fromRight' tokens
@@ -72,7 +72,6 @@ genTreeDiagram tree maxLength =
              tree) #
     D.centerXY #
     D.pad 1.1
-
 
 main :: IO ()
 main = do
