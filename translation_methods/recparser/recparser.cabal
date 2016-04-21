@@ -15,6 +15,9 @@ cabal-version:       >= 1.10
 
 executable recparser-client
   main-is:             Main.hs
+  hs-source-dirs:      src
+  other-modules:       Lexer
+                     , Parser
   build-depends:       attoparsec >= 0.13
                      , base >= 4.8
                      , bytestring >= 0.10
@@ -36,6 +39,7 @@ executable recparser-client
 
 test-suite recparser-test
   main-is:             Test.hs
+  hs-source-dirs:      test
   other-modules:       Spec
   type:                exitcode-stdio-1.0
   build-depends:       base >=4.8

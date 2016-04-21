@@ -7,3 +7,23 @@
   В первую очередь заметим, что арифметические выражения в постфиксной
   нотации не имеют встроенных в грамматику приоритетов операций --
   любое выражение может быть разобрано однозначно.
+* Что-то
+  {-
+Part 1:
+
+Initial thoughts:
+A → A A *
+A → A A +
+A → A A -
+A → n
+
+Equal to:
+A → A A * | A A + | A A - | n
+
+After left recursion elimination:
+A → n B | n
+B → A * | A + | A - | A * B | A + B | A - B
+
+No left factoring here, so the grammar is in its best
+state now.
+-}
