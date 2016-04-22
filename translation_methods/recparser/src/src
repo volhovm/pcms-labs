@@ -1,0 +1,6 @@
+  /home/volhovm/code/pcms-labs/translation_methods/recparser/src:
+  total used in directory 20 available 8025468
+  drwxr-xr-x 2 volhovm users 4096 Apr 22 02:44 .
+  drwxr-xr-x 5 volhovm users 4096 Apr 22 03:13 ..
+  drwxr-xr-x 2 volhovm users 4096 Apr 22 03:13 Recparser
+  -rw-r--r-- 1 volhovm users 3049 Apr 22 02:44 Main.hs

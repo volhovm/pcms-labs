@@ -1,10 +1,10 @@
-module Parser
+module Recparser.Parser
        ( PA (..)
        , PB (..)
        , runParser
        ) where
 
-import           Lexer                (Token (..))
+import           Recparser.Lexer      (Token (..))
 
 import           Control.Monad.Except (ExceptT (..), catchError, runExceptT,
                                        throwError)

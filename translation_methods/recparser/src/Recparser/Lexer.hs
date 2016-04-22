@@ -1,6 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
-
-module Lexer (lexicalAnalyzer, Token (..)) where
+module Recparser.Lexer (lexicalAnalyzer, Token (..)) where
 
 import           Control.Monad.State              (StateT (..), evalStateT, get,
                                                    modify)

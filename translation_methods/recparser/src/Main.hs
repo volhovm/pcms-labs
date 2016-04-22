@@ -15,8 +15,7 @@ import qualified Diagrams.TwoD.Layout.Tree as D
 import           System.IO                 (Handle, IOMode (ReadMode), openFile)
 import qualified Turtle                    as T
 
-import           Lexer
-import           Parser
+import           Recparser
 
 parseGrammar :: Handle -> IO PA
 parseGrammar handle = do
