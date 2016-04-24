@@ -3,28 +3,19 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import           Control.Monad             (void, when)
+import           Control.Monad             (void)
 import qualified Data.ByteString.Char8     as BS
-import           Data.Either.Combinators   (fromLeft', fromRight', isLeft)
 import           Data.Tree                 (Tree (..))
 import           Data.Tree.Pretty          (drawVerticalTree)
 import           Diagrams.Backend.SVG      (SVG (..), renderSVG)
 import           Diagrams.Prelude          (( # ), (&), (.~), (<>), (~~))
 import qualified Diagrams.Prelude          as D
 import qualified Diagrams.TwoD.Layout.Tree as D
-import           System.IO                 (Handle, IOMode (ReadMode), openFile)
+import           System.IO                 (IOMode (ReadMode), openFile)
 import qualified Turtle                    as T
 
 import           Recparser
 
-parseGrammar :: Handle -> IO PA
-parseGrammar handle = do
-    tokens <- lexicalAnalyzer <$> BS.hGetContents handle
-    when (isLeft tokens) $ error $ "Lexer failed: " ++ show (fromLeft' tokens)
-    putStrLn $ "Tokens: " ++ show tokens
-    let parsed = runParser $ fromRight' tokens
-    when (isLeft parsed) $ error $ "Parser failed: " ++ fromLeft' parsed
-    return $ fromRight' parsed
 
 prettyPrintTree :: Tree String -> String
 prettyPrintTree = drawVerticalTree
@@ -52,8 +43,11 @@ instance Show PB where
 
 getTree :: IO (Tree String)
 getTree = do
-  test0 <- openFile "test4.in" ReadMode
-  toTree <$> parseGrammar test0
+  handle <- openFile "test4.in" ReadMode
+  res <- parseGrammar <$> BS.hGetContents handle
+  case res of
+      Left str -> error str
+      Right pa -> return $ toTree pa
 
 cast :: (Integral a) => a -> Double
 cast = fromInteger . toInteger

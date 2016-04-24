@@ -19,6 +19,7 @@ library
   build-depends:       attoparsec >= 0.13
                      , base >= 4.8
                      , bytestring >= 0.10
+                     , either >= 4.4
                      , containers >= 0.5
                      , mtl >= 2.2
                      , transformers >= 0.4.2.0
@@ -59,7 +60,6 @@ test-suite recparser-test
                      , base >=4.8
                      , bytestring >= 0.10
                      , hspec >= 2.2.2
-                     , random >= 1.1
                      , random >= 1.1
                      , recparser
   default-language:    Haskell2010
