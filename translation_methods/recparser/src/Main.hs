@@ -52,7 +52,7 @@ instance Show PB where
 
 getTree :: IO (Tree String)
 getTree = do
-  test0 <- openFile "test5.in" ReadMode
+  test0 <- openFile "test4.in" ReadMode
   toTree <$> parseGrammar test0
 
 cast :: (Integral a) => a -> Double
