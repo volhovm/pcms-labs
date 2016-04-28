@@ -74,7 +74,7 @@ showPA (PAPrefix i pb) = (##) <$> wd (bsh i) <*> showPB pb
 showPA (PANum i) = wd (bsh i)
 
 showPB :: PB -> Gen BS.ByteString
-showPB (PB pa pc) = (\a b -> a ## " " ## b) <$> showPA pa <*> showPC pc
+showPB (PB pa pc) = BS.concat <$> sequence [showPA pa, BS.singleton <$> delimiter, showPC pc]
 
 showPC :: PC -> Gen BS.ByteString
 showPC ((:+) pd) = (flip BS.snoc '+' <$> showPD pd) >>= wd
