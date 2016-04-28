@@ -11,6 +11,7 @@ import           Diagrams.Backend.SVG      (SVG (..), renderSVG)
 import           Diagrams.Prelude          (( # ), (&), (.~), (<>), (~~))
 import qualified Diagrams.Prelude          as D
 import qualified Diagrams.TwoD.Layout.Tree as D
+import qualified GHC.IO.Encoding           as E
 import           System.IO                 (IOMode (ReadMode), openFile)
 import qualified Turtle                    as T
 
@@ -28,12 +29,16 @@ instance TreeLike PA where
     toTree (PAPrefix i pb) = Node "A" [Node (show i) [], toTree pb]
 
 instance TreeLike PB where
-    toTree ((:+) pa) = Node "B" [toTree pa, Node "+" []]
-    toTree ((:-) pa) = Node "B" [toTree pa, Node "-" []]
-    toTree ((:*) pa) = Node "B" [toTree pa, Node "*" []]
-    toTree ((:++) pa pb) = Node "B" [toTree pa, Node "+" [], toTree pb]
-    toTree ((:--) pa pb) = Node "B" [toTree pa, Node "-" [], toTree pb]
-    toTree ((:**) pa pb) = Node "B" [toTree pa, Node "*" [], toTree pb]
+    toTree (PB pa pc) = Node "B" [toTree pa, toTree pc]
+
+instance TreeLike PC where
+    toTree ((:+) pd) = Node "C" [toTree pd, Node "+" []]
+    toTree ((:-) pd) = Node "C" [toTree pd, Node "-" []]
+    toTree ((:*) pd) = Node "C" [toTree pd, Node "*" []]
+
+instance TreeLike PD where
+    toTree PDε = Node "ε" []
+    toTree (PDB pb) = toTree pb
 
 instance Show PA where
     show t = prettyPrintTree $ toTree t
@@ -43,6 +48,7 @@ instance Show PB where
 
 getTree :: IO (Tree String)
 getTree = do
+  E.setLocaleEncoding E.utf8
   handle <- openFile "test4.in" ReadMode
   res <- parseGrammar <$> BS.hGetContents handle
   case res of
@@ -68,10 +74,11 @@ genTreeDiagram tree maxLength =
 
 main :: IO ()
 main = do
+    E.setLocaleEncoding E.utf8
     tree <- getTree
     putStrLn $ prettyPrintTree tree
     let maxStringLength = maximum $ fmap length tree
-    print maxStringLength
+    putStrLn $ "Max string length: " ++ show maxStringLength
     renderSVG
         "diagram.svg"
         (D.mkWidth (min (500 * max 1 (cast maxStringLength / 3)) 2000))

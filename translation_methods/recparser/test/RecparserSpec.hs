@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module RecparserSpec (spec) where
@@ -11,8 +12,9 @@ import           Test.QuickCheck       (Arbitrary (..), Gen, Positive (..),
                                         arbitrary, choose, elements, forAll,
                                         listOf1, oneof)
 
-import           Recparser             (PA (..), PB (..), Token (..),
-                                        lexicalAnalyzer, parseGrammar)
+import           Recparser             (PA (..), PB (..), PC (..), PD (..),
+                                        Token (..), lexicalAnalyzer,
+                                        parseGrammar)
 
 delimiter :: Gen Char
 delimiter = elements "\n\t "
@@ -51,30 +53,42 @@ instance Arbitrary PA where
         oneof [PANum <$> arbitrary, PAPrefix <$> arbitrary <*> arbitrary]
 
 instance Arbitrary PB where
+    arbitrary = PB <$> arbitrary <*> arbitrary
+
+instance Arbitrary PC where
     arbitrary = oneof [ (:+) <$> arbitrary
                       , (:-) <$> arbitrary
-                      , (:*) <$> arbitrary
-                      , (:++) <$> arbitrary <*> arbitrary
-                      , (:--) <$> arbitrary <*> arbitrary
-                      , (:**) <$> arbitrary <*> arbitrary]
+                      , (:*) <$> arbitrary ]
+
+instance Arbitrary PD where
+    arbitrary = oneof [return PDε, PDB <$> arbitrary]
+
+(##) :: BS.ByteString -> BS.ByteString -> BS.ByteString
+(##) = BS.append
 
 bsh :: (Show a) => a -> BS.ByteString
 bsh = BS.pack . show
 
 showPA :: PA -> Gen BS.ByteString
-showPA (PAPrefix i pb) = BS.append <$> wd (bsh i) <*> showPB pb
+showPA (PAPrefix i pb) = (##) <$> wd (bsh i) <*> showPB pb
 showPA (PANum i) = wd (bsh i)
 
 showPB :: PB -> Gen BS.ByteString
-showPB ((:+) pa) = (flip BS.snoc '+' <$> showPA pa) >>= wd
-showPB ((:-) pa) = (flip BS.snoc '-' <$> showPA pa) >>= wd
-showPB ((:*) pa) = (flip BS.snoc '*' <$> showPA pa) >>= wd
-showPB ((:++) pa pb) = BS.concat <$> sequence [showPA pa, wd "+", showPB pb]
-showPB ((:--) pa pb) = BS.concat <$> sequence [showPA pa, wd "-", showPB pb]
-showPB ((:**) pa pb) = BS.concat <$> sequence [showPA pa, wd "*", showPB pb]
+showPB (PB pa pc) = (\a b -> a ## " " ## b) <$> showPA pa <*> showPC pc
+
+showPC :: PC -> Gen BS.ByteString
+showPC ((:+) pd) = (flip BS.snoc '+' <$> showPD pd) >>= wd
+showPC ((:-) pd) = (flip BS.snoc '-' <$> showPD pd) >>= wd
+showPC ((:*) pd) = (flip BS.snoc '*' <$> showPD pd) >>= wd
+
+showPD :: PD -> Gen BS.ByteString
+showPD PDε = return ""
+showPD (PDB pb) = showPB pb
 
 deriving instance (Show PA)
 deriving instance (Show PB)
+deriving instance (Show PC)
+deriving instance (Show PD)
 
 correctGrammar, badGrammar :: Gen BS.ByteString
 correctGrammar = arbitrary >>= showPA
