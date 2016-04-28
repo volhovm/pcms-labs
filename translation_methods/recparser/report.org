@@ -1,4 +1,11 @@
+#+LANGUAGE: ru
+#+LaTeX_CLASS_OPTIONS: [a4paper, unicode]
+#+OPTIONS: toc:nil
+#+LaTeX_HEADER: \usepackage[a4paper, left=3cm,right=3cm,top=2cm,bottom=2cm]{geometry}
+#+LaTeX_HEADER: \usepackage[russian]{babel}             % Russian translations
+#+LaTeX_HEADER: \usepackage{amssymb,amsmath,amsthm}     % Mathematic symbols, theorems, etc.
 #+TITLE: Отчет по лабораторной работе #2
+#+AUTHOR: Михаил Волхов (M3338)
 
 * Условия
   Арифметические выражения в постфиксной записи с операциями сложения,
@@ -7,37 +14,54 @@
   В первую очередь заметим, что арифметические выражения в постфиксной
   нотации не имеют встроенных в грамматику приоритетов операций --
   любое выражение может быть разобрано однозначно.
-* Что-то
-Part 1:
 
-Initial thoughts:
-A → A A *
-A → A A +
-A → A A -
-A → n
+  Поэтому изначальная грамматика будет выглядить так:
 
-Equal to:
-A → A A * | A A + | A A - | n
+  #+OPTIONS: tex:t
+  \begin{align*}
+  A &\rightarrow A A * \\
+  A &\rightarrow A A + \\
+  A &\rightarrow A A - \\
+  A &\rightarrow n
+  \end{align*}
 
-After left recursion elimination:
-A → n B | n
-B → A * | A + | A - | A * B | A + B | A - B
+  В нотации EBNF:
+  \[A \rightarrow A A * | A A + | A A - | n\]
 
-Есть правое ветвление, после устранения:
-A → n B | n
-B → A C
-C → * | + | - | * B | + B | - B
+  Избавимся сначала от левой рекурсии:
+  \begin{align*}
+  A &\rightarrow n B | n \\
+  B &\rightarrow A * | A + | A - | A * B | A + B | A - B
+  \end{align*}
 
-Все еще есть правое ветвление, устраним:
-A → n B | n
-B → A C
-C → * D | + D | - D
-D → ε | B
+  Есть правое ветвление, устраним его:
+  \begin{align*}
+  A &\rightarrow n B | n \\
+  B &\rightarrow A C \\
+  C &\rightarrow * | + | - | * B | + B | - B
+  \end{align*}
 
-| T | FIRST | FOLLOW  |
-|---+-------+---------|
-| A | n     | $ * + - |
-| C | * + - | $ * + - |
-| D | ε n   | $ * + - |
-| B | n     | $ * + - |
-|---+-------+---------|
+  Все еще есть правое ветвление, устраним:
+  \begin{align*}
+  A &\rightarrow n B | n \\
+  B &\rightarrow A C \\
+  C &\rightarrow * D | + D | - D \\
+  D &\rightarrow \varepsilon | B
+  \end{align*}
+* Построение лексического анализатора
+  Лексический анализатор находится в модуле
+  ~Recparser.Lexer~. Терминалы в нашей грамматике: $n, +, -,
+  *$. Соотвествуют дататайпу ~Token~ в представленном модуле.
+* Построение синтаксического анализатора
+  Посчитаем ~FIRST~ и ~FOLLOW~:
+  | T | FIRST          | FOLLOW     |
+  |---+----------------+------------|
+  | A | n              | $, *, +, - |
+  | C | *, +, -        | $, *, +, - |
+  | D | \varepsilon, n | $, *, +, - |
+  | B | n              | $, *, +, - |
+  |---+----------------+------------|
+
+  Код синтаксического анализатора находится в модуле
+  ~Recparser.Parser~. Дататайпы ~PA, PB, PC, PD~ в точности
+  соответствуют нетерминалам грамматики.
