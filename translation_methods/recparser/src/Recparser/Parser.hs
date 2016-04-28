@@ -10,7 +10,7 @@ import           Recparser.Lexer      (Token (..))
 
 import           Control.Monad.Except (ExceptT (..), catchError, runExceptT,
                                        throwError)
-import           Control.Monad.State  (State, evalState, get, modify, put)
+import           Control.Monad.State  (State, get, modify, put, runState)
 
 type Parser a = ExceptT String (State [Token]) a
 
@@ -70,4 +70,8 @@ parsePD = do
     return $ maybe PDε PDB bBoxed
 
 runParser :: [Token] -> Either String PA
-runParser = evalState (runExceptT parsePA)
+runParser tokens =
+    let (a,lefttokens) = runState (runExceptT parsePA) tokens
+    in if null lefttokens
+           then a
+           else Left "Couldn't parse all input."
