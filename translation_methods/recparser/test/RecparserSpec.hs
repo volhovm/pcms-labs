@@ -10,7 +10,7 @@ import           Test.Hspec            (Spec, describe)
 import           Test.Hspec.QuickCheck (prop)
 import           Test.QuickCheck       (Arbitrary (..), Gen, Positive (..),
                                         arbitrary, choose, elements, forAll,
-                                        listOf1, oneof)
+                                        listOf1, oneof, verbose)
 
 import           Recparser             (PA (..), PB (..), PC (..), PD (..),
                                         Token (..), lexicalAnalyzer,
@@ -38,12 +38,12 @@ spoilString s = do
     (Positive a) <- arbitrary
     let (s1,s2) = BS.splitAt a s
     randstr <- listOf1 $
-        elements "',.pyfgcrl/=-snthdiueoa;qjkbwvxz<>PYFGCR?L:QJSTHKBMWVHUTNE"
+        elements "pyfgcrl/=snthdiueoa;qjkbwvxz<>PYFGCR?L:QJSTHKBMWVHUTNE"
     return $ s1 `BS.append` BS.pack randstr `BS.append` s2
 
 correctLexerStr, badLexerStr :: Gen BS.ByteString
 correctLexerStr = do
-    len <- choose (0, 100)
+    len <- choose (0, 500)
     mconcat <$>
         replicateM len (BS.cons <$> delimiter <*> (showToken <$> arbitrary))
 badLexerStr = correctLexerStr >>= spoilString
@@ -98,13 +98,11 @@ spec :: Spec
 spec = do
     describe "Lexer testing" $ do
       prop "Lexer doesn't fail on some real inputs." $
-          forAll (lexicalAnalyzer <$> correctLexerStr) isRight
+          verbose $ forAll correctLexerStr $ isRight . lexicalAnalyzer
       prop "Lexer fails on incorrect inputs." $
-          forAll (lexicalAnalyzer <$> badLexerStr) isLeft
+          verbose $ forAll badLexerStr $ isLeft . lexicalAnalyzer
     describe "Parser testing" $ do
       prop "Parser doesn't fail on some real inputs." $
-          forAll (paired parseGrammar <$> correctGrammar) (isRight . fst)
+          verbose $ forAll correctGrammar $ isRight . parseGrammar
       prop "Parser fails on some strange inputs" $
-          forAll (paired parseGrammar <$> badGrammar) (isLeft . fst)
-  where
-    paired f x = (f x, x)
+          verbose $ forAll badGrammar $ isLeft . parseGrammar
