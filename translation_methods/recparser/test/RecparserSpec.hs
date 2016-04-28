@@ -3,10 +3,10 @@
 
 module RecparserSpec (spec) where
 
-import           Control.Monad         (replicateM)
+import           Control.Monad         (forM_, replicateM)
 import qualified Data.ByteString.Char8 as BS
 import           Data.Either           (isLeft, isRight)
-import           Test.Hspec            (Spec, describe)
+import           Test.Hspec            (Spec, describe, it, shouldSatisfy)
 import           Test.Hspec.QuickCheck (prop)
 import           Test.QuickCheck       (Arbitrary (..), Gen, Positive (..),
                                         arbitrary, choose, elements, forAll,
@@ -49,8 +49,7 @@ correctLexerStr = do
 badLexerStr = correctLexerStr >>= spoilString
 
 instance Arbitrary PA where
-    arbitrary =
-        oneof [PANum <$> arbitrary, PAPrefix <$> arbitrary <*> arbitrary]
+    arbitrary = PA <$> arbitrary <*> arbitrary
 
 instance Arbitrary PB where
     arbitrary = PB <$> arbitrary <*> arbitrary
@@ -70,11 +69,11 @@ bsh :: (Show a) => a -> BS.ByteString
 bsh = BS.pack . show
 
 showPA :: PA -> Gen BS.ByteString
-showPA (PAPrefix i pb) = (##) <$> wd (bsh i) <*> showPB pb
-showPA (PANum i) = wd (bsh i)
+showPA (PA i pd) = (##) <$> wd (bsh i) <*> showPD pd
 
 showPB :: PB -> Gen BS.ByteString
-showPB (PB pa pc) = BS.concat <$> sequence [showPA pa, BS.singleton <$> delimiter, showPC pc]
+showPB (PB pa pc) =
+    BS.concat <$> sequence [showPA pa, BS.singleton <$> delimiter, showPC pc]
 
 showPC :: PC -> Gen BS.ByteString
 showPC ((:+) pd) = (flip BS.snoc '+' <$> showPD pd) >>= wd
@@ -96,13 +95,30 @@ badGrammar = correctGrammar >>= spoilString
 
 spec :: Spec
 spec = do
-    describe "Lexer testing" $ do
-      prop "Lexer doesn't fail on some real inputs." $
-          verbose $ forAll correctLexerStr $ isRight . lexicalAnalyzer
-      prop "Lexer fails on incorrect inputs." $
-          verbose $ forAll badLexerStr $ isLeft . lexicalAnalyzer
-    describe "Parser testing" $ do
-      prop "Parser doesn't fail on some real inputs." $
-          verbose $ forAll correctGrammar $ isRight . parseGrammar
-      prop "Parser fails on some strange inputs" $
-          verbose $ forAll badGrammar $ isLeft . parseGrammar
+    describe "Lexer" $
+        do prop "Doesn't fail on random token lists." $
+               verbose $ forAll correctLexerStr $ isRight . lexicalAnalyzer
+           prop "Fails on incorrect strings (with trash)." $
+               verbose $ forAll badLexerStr $ isLeft . lexicalAnalyzer
+    describe "Parser" $
+        do it "Passes hand-written tests." handWrittenTests
+           prop "Doesn't fail on generated grammars." $
+               verbose $ forAll correctGrammar parserSucceeds
+           prop "Fails on spoiled input (with trash)." $
+               verbose $ forAll badGrammar parserFails
+  where
+    handWrittenTests = do
+        forM_ succeeding (`shouldSatisfy` parserSucceeds)
+        forM_ failing (`shouldSatisfy` parserFails)
+    succeeding =
+        [ "1"
+        , "-1"
+        , "1 2 +"
+        , "-1 -2 +"
+        , "1 2 + 3 4 * -"
+        , "1 2 + 3 4 * 5 - *"
+        , "1 2 + 5 3 4 * - *"
+        , "1\n2\t+\n3\t4\n*\t5 - *"]
+    failing = ["", "a", "*", "1 +", "1 2 + *", "1 2 + 5"]
+    parserSucceeds = isRight . parseGrammar
+    parserFails = isLeft . parseGrammar

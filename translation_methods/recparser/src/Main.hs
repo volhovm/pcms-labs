@@ -25,8 +25,7 @@ class TreeLike a where
     toTree :: a -> Tree String
 
 instance TreeLike PA where
-    toTree (PANum i) = Node "A" [Node (show i) []]
-    toTree (PAPrefix i pb) = Node "A" [Node (show i) [], toTree pb]
+    toTree (PA i pd) = Node "A" [Node (show i) [], toTree pd]
 
 instance TreeLike PB where
     toTree (PB pa pc) = Node "B" [toTree pa, toTree pc]
@@ -37,23 +36,32 @@ instance TreeLike PC where
     toTree ((:*) pd) = Node "C" [toTree pd, Node "*" []]
 
 instance TreeLike PD where
-    toTree PDε = Node "ε" []
-    toTree (PDB pb) = toTree pb
+    toTree PDε = Node "D" [Node "ε" []]
+    toTree (PDB pb) = Node "D" [toTree pb]
 
-instance Show PA where
-    show t = prettyPrintTree $ toTree t
 
-instance Show PB where
-    show t = prettyPrintTree $ toTree t
+genTree :: BS.ByteString -> Tree String
+genTree input =
+    case parseGrammar input of
+        Left str -> error str
+        Right pa -> toTree pa
+
+showTree :: Tree String -> IO ()
+showTree tree = do
+  let maxStringLength = maximum $ fmap length tree
+  putStrLn $ prettyPrintTree tree
+  putStrLn $ "Max string length: " ++ show maxStringLength
+  renderSVG
+      "diagram.svg"
+      (D.mkWidth (min (500 * max 1 (cast maxStringLength / 3)) 2000))
+      (genTreeDiagram tree maxStringLength)
+  void $ T.shell "xdg-open ./diagram.svg" T.empty
 
 getTree :: IO (Tree String)
 getTree = do
   E.setLocaleEncoding E.utf8
   handle <- openFile "test4.in" ReadMode
-  res <- parseGrammar <$> BS.hGetContents handle
-  case res of
-      Left str -> error str
-      Right pa -> return $ toTree pa
+  genTree <$> BS.hGetContents handle
 
 cast :: (Integral a) => a -> Double
 cast = fromInteger . toInteger
@@ -72,15 +80,13 @@ genTreeDiagram tree maxLength =
     D.centerXY #
     D.pad 1.1
 
+present :: BS.ByteString -> IO ()
+present input = do
+    E.setLocaleEncoding E.utf8
+    showTree $ genTree input
+
 main :: IO ()
 main = do
     E.setLocaleEncoding E.utf8
     tree <- getTree
-    putStrLn $ prettyPrintTree tree
-    let maxStringLength = maximum $ fmap length tree
-    putStrLn $ "Max string length: " ++ show maxStringLength
-    renderSVG
-        "diagram.svg"
-        (D.mkWidth (min (500 * max 1 (cast maxStringLength / 3)) 2000))
-        (genTreeDiagram tree maxStringLength)
-    void $ T.shell "xdg-open ./diagram.svg" T.empty
+    showTree tree

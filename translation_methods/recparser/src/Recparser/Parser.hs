@@ -1,3 +1,6 @@
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TupleSections      #-}
+
 module Recparser.Parser
        ( PA (..)
        , PB (..)
@@ -8,70 +11,80 @@ module Recparser.Parser
 
 import           Recparser.Lexer      (Token (..))
 
-import           Control.Monad.Except (ExceptT (..), catchError, runExceptT,
-                                       throwError)
-import           Control.Monad.State  (State, get, modify, put, runState)
+import           Control.Monad.Except (ExceptT (..), runExceptT, throwError)
+import           Control.Monad.State  (State, get, put, runState)
 
 type Parser a = ExceptT String (State [Token]) a
 
 {-
-A → n B | n
+A → n D
 B → A C
 C → * D | + D | - D
 D → ε | B
 -}
 
-data PA = PAPrefix Integer PB
-        | PANum Integer
+data PA = PA Integer PD
 data PB = PB PA PC
 data PC = (:+) PD
         | (:-) PD
         | (:*) PD
 data PD = PDε | PDB PB
 
-popToken :: Parser Token
+popToken :: Parser ()
 popToken = do
     tokens <- get
     case tokens of
         [] -> throwError "Unexpected end of input"
-        x:xs -> put xs >> return x
+        _:xs -> put xs
 
-pushToken :: Token -> Parser ()
-pushToken t = modify (t :)
+peekToken :: Parser (Maybe Token)
+peekToken = do
+    tokens <- get
+    case tokens of
+        [] -> return Nothing
+        x:_ -> return (Just x)
+
+failExpected :: String -> Maybe Token -> Parser a
+failExpected expected (Just e) = throwError $
+    "Expected " ++ expected ++ ", got " ++ show e
+failExpected expected Nothing = throwError $
+    "Expected " ++ expected ++ ", got epsilon (EOF)"
 
 parsePA :: Parser PA
 parsePA = do
-    number <- popToken
+    number <- peekToken
     case number of
-        (TNum n) ->
-            (PAPrefix n <$> parsePB) `catchError` const (return (PANum n))
-        t -> do
-            pushToken number
-            throwError $ "Expected integer, got: " ++ show t
+        (Just (TNum n)) -> popToken >> PA n <$> parsePD
+        t -> failExpected "integer while parsing PA" t
 
 parsePB :: Parser PB
-parsePB = PB <$> parsePA <*> parsePC
+parsePB = do
+    token <- peekToken
+    case token of
+        (Just (TNum _)) -> PB <$> parsePA <*> parsePC
+        t -> failExpected "integer while parsing PB" t
 
 parsePC :: Parser PC
 parsePC = do
-    opToken <- popToken
-    d <- parsePD
-    case opToken of
-        (:+:) -> return $ (:+) d
-        (:-:) -> return $ (:-) d
-        (:*:) -> return $ (:*) d
-        t -> do
-            pushToken t
-            throwError ("Expected +,- or *, got: " ++ show t)
+    opToken <- peekToken
+    ret <- case opToken of
+        Just (:+:) -> return (:+)
+        Just (:-:) -> return (:-)
+        Just (:*:) -> return (:*)
+        t -> failExpected "+, - or *" t
+    popToken
+    ret <$> parsePD
 
 parsePD :: Parser PD
 parsePD = do
-    bBoxed <- (Just <$> parsePB) `catchError` const (return Nothing)
-    return $ maybe PDε PDB bBoxed
+    tokens <- peekToken
+    case tokens of
+        Just (TNum _) -> PDB <$> parsePB
+        _ -> return PDε
 
 runParser :: [Token] -> Either String PA
 runParser tokens =
-    let (a,lefttokens) = runState (runExceptT parsePA) tokens
-    in if null lefttokens
-           then a
-           else Left "Couldn't parse all input."
+    case runState (runExceptT parsePA) tokens of
+        (o@(Left _),_) -> o
+        (a, []) -> a
+        (_, _) -> Left "Couldn't parse all input"
