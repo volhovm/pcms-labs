@@ -9,7 +9,7 @@ javac: antlr
 	javac -classpath "$(antlr):." Functional*.java Helpers.java
 
 test: antlr primtest.sf
-	java -classpath "$(antlr):." org.antlr.v4.gui.TestRig Functional funcname -gui primtest.sf
+	java -classpath "$(antlr):." org.antlr.v4.gui.TestRig Functional topLevel -gui primtest.sf
 
 clean:
 	rm -rf Functional*java

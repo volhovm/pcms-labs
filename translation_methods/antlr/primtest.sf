@@ -1,1 +1,9 @@
-foobar
+foo :: ∀a.(a → a) → Char → Bool → Int
+foo _ _ _ =
+  let retInt _ = 123 in
+    bar 6 (retInt 3 'k')
+  where
+    bar i _ = apply "aoeu" ''
+
+bar :: ∀a.a → Int
+bar kek = foo kek kek kek
