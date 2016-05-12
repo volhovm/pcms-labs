@@ -1,5 +1,10 @@
 grammar Functional;
 
+@parser::members {
+  public List<String> freeVars = new ArrayList<String>();
+  public boolean asArgs = false;
+}
+
 topLevel: Nl? (f+=func Nl)* f+=func Nl? EOF              { Helpers.showResult($f); };
 
 func returns [String res]
@@ -18,12 +23,14 @@ pureType
 
 // Terms
 decl[int argnum, String fooname] returns [String res]
-    : {$fooname.equals(getCurrentToken().getText())}? Name args '|' Nl? cond=term '=' Nl? e1=retterm
+    : {$fooname.equals(getCurrentToken().getText())}? Name args '|' Nl? {freeVars.addAll($args.res);} cond=term '=' Nl? e1=retterm
                                                          { Helpers.checkArgs($fooname,$argnum,$args.argnum);
-                                                           $res = Helpers.genDecl($args.res,$cond.res,$e1.res); }
-    | {$fooname.equals(getCurrentToken().getText())}? Name args '=' Nl? e2=retterm
+                                                           $res = Helpers.genDecl($args.res,$cond.res,$e1.res);
+                                                           freeVars.removeAll($args.res); }
+    | {$fooname.equals(getCurrentToken().getText())}? Name args '=' Nl? {freeVars.addAll($args.res);} e2=retterm
                                                          { Helpers.checkArgs($fooname,$argnum,$args.argnum);
-                                                           $res = Helpers.genDecl($args.res,$e2.res); }
+                                                           $res = Helpers.genDecl($args.res,$e2.res);
+                                                           freeVars.removeAll($args.res); }
     ;
 
 args returns [List<String> res, int argnum]
@@ -34,20 +41,23 @@ retterm returns [String res, boolean ret]
                                                            else { $res = $t.res; $ret = false; } };
 
 term returns [String res, boolean ret]
-    : ('let' Nl? (f+=func Nl)* f+=func Nl?) 'in'<assoc=right> (Nl? rt=retterm)
-                                                         { $res = Helpers.genScoped($rt.res,$f); $ret = $rt.ret; }
-    | 'if' t1=term Nl? 'then' rt2=retterm Nl? 'else' rt3=retterm
+    : 'if' t1=term Nl? 'then' rt2=retterm Nl? 'else' rt3=retterm
                                                          { $res = Helpers.genIfThenElse($t1.res,$rt2.res,$rt3.res); $ret = ($rt2.ret || $rt3.ret); }
-    | t=term (ts+=term)+                                 { $res = Helpers.genApplication($t.res,$ts); $ret = false; }
     | t1=term Infix t2=term                              { $res = Helpers.genInfix($Infix.text,$t1.res,$t2.res); $ret = false; }
     | '(' t=term ')'                                     { $res = "(" + $t.res + ")"; $ret = $t.ret; }
-    | '[' Nl? (Nl? e+=term Nl? ',')* Nl? e+=term Nl? ']' { $res = Helpers.genListConstr($e); $ret = false; }
-    | n=Name                                             { $res = $n.text.trim(); $ret = false; }
+    | ('let' Nl? (f+=func Nl)* f+=func Nl?) 'in'<assoc=right> (Nl? rt=retterm)
+                                                         { $res = Helpers.genScoped($rt.res,$f); $ret = $rt.ret; }
     | primValue                                          { $res = $primValue.res; $ret = false; }
+    | n=Name {asArgs = true;} (ts+=primValue)+
+                                                         { $res = Helpers.genApplication($n.text,$ts); $ret = false; asArgs = false; }
     ;
 
 primValue returns [String res]
-    : prim = (Int | Charlit | Strlit | True | False)     { $res = $prim.text; };
+    : prim=(Int | Charlit | Strlit | True | False)       { $res = $prim.text; }
+    | n=Name                                             { $res = Helpers.genFuncOrVar($n.text,freeVars,asArgs); }
+    | '[' Nl? (Nl? e+=primValue Nl? ',')* Nl? e+=primValue Nl? ']'
+                                                         { $res = Helpers.genListConstr($e); }
+    ;
 
 Whitespace: [ \t]+ -> skip;
 Hole:       '_';

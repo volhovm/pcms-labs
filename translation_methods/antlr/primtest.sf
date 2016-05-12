@@ -5,5 +5,11 @@ foo a _ | a <= 6 =
   in baz
 foo a f | f [a] =
   let bar :: Int
-      bar = 123 in bar + 5
+      bar = 123 in a + bar + 5
 foo _ _ = 1010
+
+constTrue :: [Int] -> Bool
+constTrue _ = True
+
+main :: Int
+main = foo 888 constTrue
