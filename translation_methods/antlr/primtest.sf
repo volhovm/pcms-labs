@@ -1,10 +1,9 @@
-foo :: ∀a.(a → a) → Char → [Bool] → Int
-foo _ _ _ =
-  let retInt _ = 123 in
-    bar 6 (retInt 3 'k')
-  where
-    bar i _ = apply "aoeu" '' [4,3,5]
-foo _ _ _ | 5 > 4 = kek
-
-bar :: ∀a.a → Int
-bar kek = foo kek kek kek
+foo :: Int → ([Int] → Bool) → Int
+foo a _ | a <= 6 =
+  let baz :: Int
+      baz = 6
+  in baz
+foo a f | f [a] =
+  let bar :: Int
+      bar = 123 in bar + 5
+foo _ _ = 1010

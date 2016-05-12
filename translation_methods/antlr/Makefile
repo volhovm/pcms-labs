@@ -5,7 +5,7 @@ all: antlr javac
 antlr: Functional.g
 	java -jar $(antlr) Functional.g
 
-javac: antlr
+javac: FunctionalParser.java
 	javac -classpath "$(antlr):." Functional*.java Helpers.java
 
 test: antlr primtest.sf
