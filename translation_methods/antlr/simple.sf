@@ -1,0 +1,15 @@
+divides :: Int -> Int -> Bool
+divides n m = ((n / m) * m) == n
+
+check :: Int -> Int -> Bool
+check n m | m == 1 = True
+check n m | divides n m = False
+check n m =
+  let k :: Int
+      k = (m - 1) in check n k
+
+checkSimple :: Int -> Bool
+checkSimple n =
+  let m :: Int
+      m = n / 2
+  in check n m

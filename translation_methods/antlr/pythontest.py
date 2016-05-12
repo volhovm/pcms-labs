@@ -15,5 +15,3 @@ def constTrue(_0):
   return True
 def main():
   return foo(888, constTrue)
-
-print main()

@@ -11,6 +11,9 @@ javac: FunctionalParser.java
 test: antlr primtest.sf
 	java -classpath "$(antlr):." org.antlr.v4.gui.TestRig Functional topLevel -gui primtest.sf
 
+kolya: antlr primtest.sf
+	java -classpath "$(antlr):." org.antlr.v4.gui.TestRig Functional topLevel -gui simple.sf
+
 clean:
 	rm -rf Functional*java
 	rm -rf *tokens
