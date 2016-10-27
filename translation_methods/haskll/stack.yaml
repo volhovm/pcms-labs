@@ -1,14 +1,13 @@
-resolver: lts-5.15
-
+resolver: lts-7.4
 packages:
 - '.'
-
+- location:
+    git: https://github.com/serokell/universum
+    commit: 500a168f4cffb7b11d8fdcae30e837e937bf83e4
+  extra-dep: true
 nix:
-    enable: false
-    shell-file: shell.nix
-
+  enable: false
+  shell-file: shell.nix
 extra-deps: []
-
 flags: {}
-
 extra-package-dbs: []
