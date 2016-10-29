@@ -6,7 +6,6 @@ packages:
     commit: 500a168f4cffb7b11d8fdcae30e837e937bf83e4
   extra-dep: true
 nix:
-  enable: false
   shell-file: shell.nix
 extra-deps: []
 flags: {}

@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeOperators #-}
+
 -- | This module defines haskll grammar
 module Grammar.Expression
        ( GrammarDef (..)
@@ -9,12 +11,15 @@ module Grammar.Expression
 
 import           Universum
 
+type Variable = Text
+type Code = Text
+
 -- | Definiton of grammar
 data GrammarDef = GrammarDef
     { gMembers :: Text
     , gExprs   :: [Expression]
     , gTokens  :: [TokenExp]
-    }
+    } deriving (Show)
 
 -- | Single grammar expression
 data Expression = Expression
@@ -22,24 +27,30 @@ data Expression = Expression
     , eReceivingAttrs  :: [Text]
     , eGeneratingAttrs :: [Text]
     , eLocals          :: [Text]
-    , eVariants        :: [Variant]
-    }
+    , eVariant         :: Term
+    } deriving (Show)
 
 -- | Single variant of expression
 data Variant = Variant
-    { vTerm :: Term                -- ^ Variant
-    , vCode :: Maybe Text        -- ^ Code for it
-    }
+    { vTerm :: Term
+    , vCode :: Maybe Text
+    } deriving (Show)
 
 -- | Term of variant
-data Term = Conc [Term]            -- ^ Term concatenation
-          | TermS Text           -- ^ Other rule call with maybe params
-                  (Maybe [Text])
-          | TermL Text           -- ^ String literal
-          | TermT Text           -- ^ Token
+data Term
+    = Term :&: Term
+    | Term :|: Term
+    | (:*:) Term
+    | (:?:) Term
+    | Variable :+=: Term
+    | Variable ::=: Term
+    | WithCode Term Code
+    | TermString Text
+    | TermToken Text
+    deriving (Show)
 
 -- | Token expression (definition)
 data TokenExp = TokenExp
-   { tName  :: Text
-   , tRegex :: Text
-   }
+    { tName  :: Text
+    , tRegex :: Text
+    } deriving (Show)
