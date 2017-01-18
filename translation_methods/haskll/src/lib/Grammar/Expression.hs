@@ -15,7 +15,9 @@ type Code = Text
 
 -- | Definiton of grammar
 data GrammarDef = GrammarDef
-    { gMembers :: Text
+    { gName    :: Text
+    , gImports :: Maybe Text
+    , gMembers :: Maybe Text
     , gExprs   :: [Expression]
     , gTokens  :: [TokenExp]
     } deriving (Show)

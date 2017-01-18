@@ -19,8 +19,9 @@ import           Grammar.Expression   (Expression (..), GrammarDef (..), Term (.
 
 type String = [Char]
 
-t :: Text
-t = $(embedStringFile "resources/test1.g")
+t1, t2 :: Text
+t1 = $(embedStringFile "resources/test1.g")
+t2 = $(embedStringFile "resources/test2.g")
 
 ----------------------------------------------------------------------------
 -- Re-written combinators
@@ -35,14 +36,21 @@ sepBy1 p sep = (:) <$> p <*> many (try $ sep *> p)
 post :: (Monad m) => m a -> m b -> m a
 post f b = f >>= \a -> b $> a
 
+spaceCmt :: Parser ()
+spaceCmt = space >> void (optional $ comment >> space)
+  where
+    comment = string "//" >> many (satisfy (/= '\n')) >> newline
+
 lexem :: Parser a -> Parser a
-lexem a = (try space >> a) `post` (try space)
+lexem a = (try spaceCmt >> a) `post` (try spaceCmt)
 
-(&^&) :: (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
+(&^&), (|^|) :: (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
 (&^&) a b = \x -> a x && b x
+(|^|) a b = \x -> a x || b x
 
-betweenMatching :: Char -> Char -> Parser String
-betweenMatching l r = try $ between (char' l) (char' r) betwMatchGo
+betweenMatching :: Char -> Char -> Parser Text
+betweenMatching l r =
+    fmap T.pack $ try $ between (char' l) (char' r) betwMatchGo
   where
     char' :: Char -> Parser String
     char' c = (:[]) <$> satisfy (== c)
@@ -56,41 +64,37 @@ betweenMatching l r = try $ between (char' l) (char' r) betwMatchGo
 optList :: Parser [a] -> Parser [a]
 optList p = fromMaybe [] <$> optional p
 
+kek,tst :: Parser String
+kek = string "kek"
+tst = try $ kek `post` string "*"
+
 ----------------------------------------------------------------------------
 -- Grammar parsing
 ----------------------------------------------------------------------------
 
-tokens :: Parser [TokenExp]
-tokens = lexem $ token `sepBy` space
-
-wordUpper, wordCamel, wordConstructor :: Parser String
-wordUpper = some $ satisfy $ isUpper &^& isAlphaNum
+wordUpper, wordCamel, wordConstructor :: Parser Text
+wordUpper = fmap T.pack $ some $ satisfy $ isUpper &^& isAlphaNum
 wordCamel = do
     hd <- try $ satisfy $ isLower &^& isAlphaNum
     tl <- many $ satisfy isAlphaNum
-    pure $ hd:tl
+    pure $ T.pack $ hd:tl
 wordConstructor = do
-    hd <- try $ satisfy $ isUpper &^& isAlphaNum
-    tl <- many $ satisfy isAlphaNum
-    pure $ hd:tl
+    hd <- try $ satisfy $ (isUpper &^& isAlphaNum) |^| (`elem` ("[]"::String))
+    tl <- many $ satisfy $ isAlphaNum |^| (`elem` ("[]."::String))
+    pure $ T.pack $ hd:tl
 
-token :: Parser TokenExp
-token = try $ do
-    name <- wordUpper
-    void $ lexem $ string ":"
-    skip <- optional $ string "SKIP"
-    void $ lexem $ string "/"
-    regex <- some $ satisfy (/= '/')
-    void $ string "/" >> lexem (string ";")
-    pure $ TokenExp (T.pack name) (T.pack regex) (isJust skip)
-
+grammarDef :: Parser GrammarDef
 grammarDef = do
+    gName <- lexem (string "grammar") >> (wordConstructor `post` (string ";"))
+    gImports <- optional $ try $ lexem (string "@imports") >> lexem (betweenMatching '{' '}')
+    gMembers <- optional $ try $ lexem (string "@members") >> lexem (betweenMatching '{' '}')
     gExprs <- many expression
     gTokens <- many token
-    pure $ GrammarDef "" gExprs gTokens
+    pure $ GrammarDef {..}
 
+expression :: Parser Expression
 expression = do
-    eName <- T.pack <$> lexem wordCamel
+    eName <- lexem wordCamel
     recv <- optList $ lexem $ receiveParams
     gen <- optList $ lexem $ genParams
     void $ lexem $ string ":"
@@ -100,28 +104,25 @@ expression = do
   where
     paramArg :: Parser (Text, Text) -- (type, name)
     paramArg = do
-        t <- T.pack <$> wordConstructor
-        space
-        c <- T.pack <$> wordCamel
-        pure $ (t,c)
+        paramType <- wordConstructor
+        spaceCmt
+        paramName <- wordCamel
+        pure $ (paramType,paramName)
     paramList :: Parser [(Text,Text)]
     paramList =
         between (string "[") (string "]") $
-        lexem $ (lexem paramArg) `sepBy` string ","
+        lexem $ (lexem paramArg) `sepBy1` string ","
     receiveParams = paramList
-    genParams = string "returns" >> space >> paramList
+    genParams = string "returns" >> spaceCmt >> paramList
 
-kek,tst :: Parser String
-kek = string "kek"
-tst = try $ kek `post` string "*"
-
+term :: Parser Term
 term = termAlt
   where
     termAlt =
         foldr1 (:|:) <$> lexem (lexem (withCode <|> termAnd) `sepBy1` string "|")
     withCode = try $ do
         predTerm <- lexem termAnd
-        codePart <- T.pack <$> betweenMatching '{' '}'
+        codePart <- betweenMatching '{' '}'
         pure $ WithCode predTerm codePart
     termAnd = foldr1 (:&:) <$> some (try $ lexem $ assoc1)
     assoc1 =
@@ -131,7 +132,7 @@ term = termAlt
         choice $ map lexem $
         [termString, termToken, subterm, termOther]
     withVar = try $ do
-        varName <- T.pack <$> wordCamel
+        varName <- wordCamel
         binding <-
             lexem $
             (string "+=" >> pure (:+=:)) <|>
@@ -142,10 +143,10 @@ term = termAlt
     termString =
         TermString . T.pack <$>
         between (try $ string "'") (string "'") (many $ satisfy (/= '\''))
-    termToken = TermToken . T.pack <$> try wordUpper
+    termToken = TermToken <$> try wordUpper
     termOther = try $ do
-        otherName <- T.pack <$> try wordCamel
-        callParams <- fmap T.pack <$> optional (betweenMatching '[' ']')
+        otherName <- try wordCamel
+        callParams <- optional (betweenMatching '[' ']')
         pure $ TermOther otherName callParams
     parens = between (string "(") (string ")") (lexem term)
     subterm = Subterm <$> parens
@@ -157,3 +158,17 @@ term = termAlt
             , (string "?" >> pure (:?:))
             ]
         pure $ modifier subt
+
+
+token :: Parser TokenExp
+token = try $ do
+    name <- wordUpper
+    void $ lexem $ string ":"
+    skip <- optional $ string "SKIP"
+    void $ lexem $ string "/"
+    regex <- some $ satisfy (/= '/')
+    void $ string "/" >> lexem (string ";")
+    pure $ TokenExp name (T.pack regex) (isJust skip)
+
+tokens :: Parser [TokenExp]
+tokens = lexem $ token `sepBy` spaceCmt
