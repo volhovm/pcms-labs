@@ -40,7 +40,8 @@ data Term
     | WithCode Term Code
     | TermString Text
     | TermToken Text
-    | Subterm Text
+    | TermOther Text -- add calling params
+    | Subterm Term
     deriving (Show)
 
 -- | Token expression (definition)
