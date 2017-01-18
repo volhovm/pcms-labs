@@ -1,9 +1,9 @@
-func : pureType '->' (decls+=pureType);
+func : pureType '->' pureType2;
 
 pureType
     : 'Int' | 'Bool' | 'Char' | '[' pureType ']';
 
-True:       'True';
-False:      'False';
-Int:        [+-]?[0-9]+;
-Nl:         [\r\n]+;
+TRUE:  SKIP /True/;
+FALSE:      /False/;
+INT:        /[+-]?[0-9]+/;
+NL:         /[\r\n]+/;

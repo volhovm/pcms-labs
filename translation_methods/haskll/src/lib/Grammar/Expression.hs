@@ -4,7 +4,6 @@
 module Grammar.Expression
        ( GrammarDef (..)
        , Expression (..)
-       , Variant (..)
        , Term (..)
        , TokenExp (..)
        ) where
@@ -27,13 +26,7 @@ data Expression = Expression
     , eReceivingAttrs  :: [Text]
     , eGeneratingAttrs :: [Text]
     , eLocals          :: [Text]
-    , eVariant         :: Term
-    } deriving (Show)
-
--- | Single variant of expression
-data Variant = Variant
-    { vTerm :: Term
-    , vCode :: Maybe Text
+    , eTerm            :: Term
     } deriving (Show)
 
 -- | Term of variant
@@ -47,10 +40,12 @@ data Term
     | WithCode Term Code
     | TermString Text
     | TermToken Text
+    | Subterm Text
     deriving (Show)
 
 -- | Token expression (definition)
 data TokenExp = TokenExp
     { tName  :: Text
     , tRegex :: Text
+    , tSkip  :: Bool
     } deriving (Show)
