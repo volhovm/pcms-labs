@@ -23,9 +23,9 @@ data GrammarDef = GrammarDef
 -- | Single grammar expression
 data Expression = Expression
     { eName            :: Text
-    , eReceivingAttrs  :: [Text]
-    , eGeneratingAttrs :: [Text]
-    , eLocals          :: [Text]
+    , eReceivingAttrs  :: [(Text,Text)] -- (type,varname)
+    , eGeneratingAttrs :: [(Text,Text)]
+    , eLocals          :: [(Text,Text)]
     , eTerm            :: Term
     } deriving (Show)
 
@@ -34,13 +34,14 @@ data Term
     = Term :&: Term
     | Term :|: Term
     | (:*:) Term
+    | (:+:) Term
     | (:?:) Term
     | Variable :+=: Term
     | Variable ::=: Term
     | WithCode Term Code
     | TermString Text
     | TermToken Text
-    | TermOther Text -- add calling params
+    | TermOther Text (Maybe Code)
     | Subterm Term
     deriving (Show)
 

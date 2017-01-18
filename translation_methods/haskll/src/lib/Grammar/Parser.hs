@@ -52,6 +52,10 @@ betweenMatching l r = try $ between (char' l) (char' r) betwMatchGo
         fmap mconcat $
         many $ try (parenthed nonParenth) <|> nonParenth <|> try (parenthed betwMatchGo)
 
+-- Behaves like optional, but retruns empty list on Nothing
+optList :: Parser [a] -> Parser [a]
+optList p = fromMaybe [] <$> optional p
+
 ----------------------------------------------------------------------------
 -- Grammar parsing
 ----------------------------------------------------------------------------
@@ -59,10 +63,14 @@ betweenMatching l r = try $ between (char' l) (char' r) betwMatchGo
 tokens :: Parser [TokenExp]
 tokens = lexem $ token `sepBy` space
 
-wordUpper, wordCamel :: Parser String
+wordUpper, wordCamel, wordConstructor :: Parser String
 wordUpper = some $ satisfy $ isUpper &^& isAlphaNum
 wordCamel = do
     hd <- try $ satisfy $ isLower &^& isAlphaNum
+    tl <- many $ satisfy isAlphaNum
+    pure $ hd:tl
+wordConstructor = do
+    hd <- try $ satisfy $ isUpper &^& isAlphaNum
     tl <- many $ satisfy isAlphaNum
     pure $ hd:tl
 
@@ -83,26 +91,42 @@ grammarDef = do
 
 expression = do
     eName <- T.pack <$> lexem wordCamel
+    recv <- optList $ lexem $ receiveParams
+    gen <- optList $ lexem $ genParams
     void $ lexem $ string ":"
     eTerm <- term
     void $ lexem $ string ";"
-    pure $ Expression eName [] [] [] eTerm
+    pure $ Expression eName recv gen [] eTerm
+  where
+    paramArg :: Parser (Text, Text) -- (type, name)
+    paramArg = do
+        t <- T.pack <$> wordConstructor
+        space
+        c <- T.pack <$> wordCamel
+        pure $ (t,c)
+    paramList :: Parser [(Text,Text)]
+    paramList =
+        between (string "[") (string "]") $
+        lexem $ (lexem paramArg) `sepBy` string ","
+    receiveParams = paramList
+    genParams = string "returns" >> space >> paramList
 
 kek,tst :: Parser String
 kek = string "kek"
 tst = try $ kek `post` string "*"
 
-term = withCode <|> termAlt
+term = termAlt
   where
+    termAlt =
+        foldr1 (:|:) <$> lexem (lexem (withCode <|> termAnd) `sepBy1` string "|")
     withCode = try $ do
-        predTerm <- lexem termAlt
+        predTerm <- lexem termAnd
         codePart <- T.pack <$> betweenMatching '{' '}'
         pure $ WithCode predTerm codePart
-    termAlt = foldr1 (:|:) <$> lexem (termAnd `sepBy1` string "|")
     termAnd = foldr1 (:&:) <$> some (try $ lexem $ assoc1)
     assoc1 =
         choice $ map lexem $
-        [subMany, subOptional, withVar, assoc0]
+        [withVar, postModifier, assoc0]
     assoc0 =
         choice $ map lexem $
         [termString, termToken, subterm, termOther]
@@ -111,6 +135,7 @@ term = withCode <|> termAlt
         binding <-
             lexem $
             (string "+=" >> pure (:+=:)) <|>
+            (string "="  >> pure (::=:)) <|>
             (string ":=" >> pure (::=:))
         subt <- assoc0
         pure $ binding varName subt
@@ -118,8 +143,17 @@ term = withCode <|> termAlt
         TermString . T.pack <$>
         between (try $ string "'") (string "'") (many $ satisfy (/= '\''))
     termToken = TermToken . T.pack <$> try wordUpper
-    termOther = TermOther . T.pack <$> try wordCamel
+    termOther = try $ do
+        otherName <- T.pack <$> try wordCamel
+        callParams <- fmap T.pack <$> optional (betweenMatching '[' ']')
+        pure $ TermOther otherName callParams
     parens = between (string "(") (string ")") (lexem term)
     subterm = Subterm <$> parens
-    subOptional = try $ ((:?:) <$> assoc0) `post` string "?"
-    subMany = try $ ((:*:) <$> assoc0) `post` string "*"
+    postModifier = try $ do
+        subt <- assoc0
+        modifier <- lexem $ choice [
+              (string "*" >> pure (:*:))
+            , (string "+" >> pure (:+:))
+            , (string "?" >> pure (:?:))
+            ]
+        pure $ modifier subt
