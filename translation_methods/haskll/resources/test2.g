@@ -8,27 +8,26 @@ grammar Functional;
 topLevel: NL? (f+=func NL)* f+=func NL? EOF              { Helpers.showResult($f); };
 
 func returns [String res]
-    : NAME '::' type (NL decls+=decl[$type.argnum, $NAME.text])+
+    : NAME DOUBLECOLON type (NL decls+=decl[$type.argnum, $NAME.text])+
                                                          { $res = Helpers.genFunc($NAME.text,$decls); };
 
 // Types
 type returns [Int argnum]
-    : pureType ('->'|'→') t2=type                        { $argnum = 1 + $t2.argnum; }
-    | '(' t=type ')'                                     { $argnum = $t.argnum; }
+    : pureType ARROW t2=type                             { $argnum = 1 + $t2.argnum; }
+    | PARENL t=type PARENR                               { $argnum = $t.argnum; }
     | pureType                                           { $argnum = 0;}
     ;
 
-pureType
-    : 'Int' | 'Bool' | 'Char' | '[' pureType ']';
+pureType: PURETYPE | PARENSQL pureType PARENSQR;
 
 // Terms
 decl[Int argnum, String fooname] returns [String res]
 //    : {$fooname.equals(getCurrentToken().getText())}? NAME args '|' NL? {freeVars.addAll($args.res);} cond=term '=' NL? e1=retterm
-    : NAME args '|' NL? cond=term '=' NL? e1=retterm  { freeVars.addAll($args.res);
+    : NAME args VERTBAR NL? cond=term EQUALS NL? e1=retterm     { freeVars.addAll($args.res);
                                                            Helpers.checkArgs($fooname,$argnum,$args.argnum);
                                                            $res = Helpers.genDecl($args.res,$cond.res,$e1.res);
                                                            freeVars.removeAll($args.res); }
-    | NAME args '=' NL? e2=retterm
+    | NAME args EQUALS NL? e2=retterm
 //    | {$fooname.equals(getCurrentToken().getText())}? NAME args '=' NL? {freeVars.addAll($args.res);} e2=retterm
                                                          { freeVars.addAll($args.res);
                                                            Helpers.checkArgs($fooname,$argnum,$args.argnum);
@@ -44,11 +43,11 @@ retterm returns [String res, Bool ret]
                                                            else { $res = $t.res; $ret = false; } };
 
 term returns [String res, Bool ret]
-    : 'if' t1=term NL? 'then' rt2=retterm NL? 'else' rt3=retterm
+    : IF t1=term NL? THEN rt2=retterm NL? ELSE rt3=retterm
                                                          { $res = Helpers.genIfThenElse($t1.res,$rt2.res,$rt3.res); $ret = ($rt2.ret || $rt3.ret); }
     | t1=term INFIX t2=term                              { $res = Helpers.genINFIX($INFIX.text,$t1.res,$t2.res); $ret = false; }
-    | '(' t=term ')'                                     { $res = "(" + $t.res + ")"; $ret = $t.ret; }
-    | ('let' NL? (f+=func NL)* f+=func NL?) 'in' (NL? rt=retterm)
+    | PARENL t=term PARENR                               { $res = "(" + $t.res + ")"; $ret = $t.ret; }
+    | (LET NL? (f+=func NL)* f+=func NL?) IN (NL? rt=retterm)
                                                          { $res = Helpers.genScoped($rt.res,$f); $ret = $rt.ret; }
     | primValue                                          { $res = $primValue.res; $ret = false; }
 //    | n=NAME {asArgs = true;} (ts+=primValue)+
@@ -60,7 +59,7 @@ term returns [String res, Bool ret]
 primValue returns [String res]
     : prim=(INTLIT | CHARLIT | STRLIT | TRUE | FALSE)       { $res = $prim.text; }
     | n=NAME                                             { $res = Helpers.genFuncOrVar($n.text,freeVars,asArgs); }
-    | '[' NL? (NL? e+=primValue NL? ',')* NL? e+=primValue NL? ']'
+    | PARENSQL NL? (NL? e+=primValue NL? COMMA)* NL? e+=primValue NL? PARENSQR
                                                          { $res = Helpers.genListConstr($e); }
     ;
 
@@ -68,7 +67,20 @@ WHITESPACE: SKIP /[ \t]+/;
 HOLE:            /_/;
 TRUE:            /True/;
 FALSE:           /False/;
-// test comment
+ARROW:           /->|→/;
+DOUBLECOLON:     /::/;
+PURETYPE:        /(Int|Bool|Char)/;
+VERTBAR:         /\|/;
+EQUALS:          /=/;
+COMMA:           /,/;
+LET:             /let/;
+IF:              /if/;
+THEN:            /then/;
+ELSE:            /else/;
+PARENL:          /\(/;
+PARENR:          /\)/;
+PARENSQL:        /\[/;
+PARENSQR:        /\]/;
 INTLIT:          /[+-]?[0-9]+/;
 INFIX:           /([\+\-\*\<\>\^\/] | '==' | '/=' | '<=' | '>=')/;
 NAME:            /[a-z][a-zA-Z\'_0-9]*/;

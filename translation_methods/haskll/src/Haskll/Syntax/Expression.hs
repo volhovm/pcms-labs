@@ -41,7 +41,6 @@ data Term
     | Variable :+=: Term
     | Variable ::=: Term
     | WithCode Term Code
-    | TermString Text
     | TermToken Text
     | TermOther Text (Maybe Code)
     | Subterm Term

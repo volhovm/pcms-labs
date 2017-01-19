@@ -3,7 +3,7 @@
 -- | Module that provides parsing capabilities for haskll grammar
 module Haskll.Syntax.Parser (parseGrammar) where
 
-import           Data.Char                (isAlphaNum, isLower, isUpper)
+import           Data.Char                (isAlphaNum, isDigit, isLower, isUpper)
 import qualified Data.Text                as T
 import           Text.Megaparsec          (between, choice, eof, parse, satisfy, string,
                                            try)
@@ -65,16 +65,18 @@ optList p = fromMaybe [] <$> optional p
 -- Grammar parsing
 ----------------------------------------------------------------------------
 
+startWith :: (Char -> Bool) -> (Char -> Bool) -> Parser Text
+startWith firstChar otherChars = do
+    hd <- try $ satisfy firstChar
+    tl <- many $ satisfy otherChars
+    pure $ T.pack $ hd:tl
+
 wordUpper, wordCamel, wordConstructor :: Parser Text
-wordUpper = fmap T.pack $ some $ satisfy $ isUpper &^& isAlphaNum
-wordCamel = do
-    hd <- try $ satisfy $ isLower &^& isAlphaNum
-    tl <- many $ satisfy isAlphaNum
-    pure $ T.pack $ hd:tl
-wordConstructor = do
-    hd <- try $ satisfy $ (isUpper &^& isAlphaNum) |^| (`elem` ("[]"::[Char]))
-    tl <- many $ satisfy $ isAlphaNum |^| (`elem` ("[]."::[Char]))
-    pure $ T.pack $ hd:tl
+wordUpper = startWith isUpper (isUpper |^| isDigit)
+wordCamel = startWith isLower isAlphaNum
+wordConstructor =
+    startWith (isUpper |^| (`elem` ("[]"::[Char])))
+              (isAlphaNum |^| (`elem` ("[]."::[Char])))
 
 grammarDef :: Parser GrammarDef
 grammarDef = do
@@ -124,7 +126,7 @@ term = termAlt
         [withVar, postModifier, assoc0]
     assoc0 =
         choice $ map lexem $
-        [termString, termToken, subterm, termOther]
+        [termToken, subterm, termOther]
     withVar = try $ do
         varName <- wordCamel
         binding <-
@@ -134,9 +136,6 @@ term = termAlt
             (string ":=" >> pure (::=:))
         subt <- assoc0
         pure $ binding varName subt
-    termString =
-        TermString . T.pack <$>
-        between (try $ string "'") (string "'") (many $ satisfy (/= '\''))
     termToken = TermToken <$> try wordUpper
     termOther = try $ do
         otherName <- try wordCamel
