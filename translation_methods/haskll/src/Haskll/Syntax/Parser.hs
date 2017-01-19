@@ -1,27 +1,20 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | Module that provides parsing capabilities for haskll grammar
-module Grammar.Parser (grammarDef) where
+module Haskll.Syntax.Parser (parseGrammar) where
 
-import qualified Data.ByteString      as BS
-import           Data.Char            (isAlphaNum, isLower, isSpace, isUpper)
-import           Data.FileEmbed       (embedStringFile)
-import qualified Data.Text            as T
-import           Text.Megaparsec      (between, choice, eof, parse, parseTest, runParser,
-                                       satisfy, sepEndBy, string, try)
-import           Text.Megaparsec.Char (newline, space)
-import           Text.Megaparsec.Prim (MonadParsec)
-import           Text.Megaparsec.Text (Parser)
+import           Data.Char                (isAlphaNum, isLower, isUpper)
+import qualified Data.Text                as T
+import           Text.Megaparsec          (between, choice, eof, parse, satisfy, string,
+                                           try)
+import           Text.Megaparsec.Char     (newline, space)
+import           Text.Megaparsec.Error    (parseErrorPretty)
+import           Text.Megaparsec.Prim     (MonadParsec)
+import           Text.Megaparsec.Text     (Parser)
 import           Universum
 
-import           Grammar.Expression   (Expression (..), GrammarDef (..), Term (..),
-                                       TokenExp (..))
-
-type String = [Char]
-
-t1, t2 :: Text
-t1 = $(embedStringFile "resources/test1.g")
-t2 = $(embedStringFile "resources/test2.g")
+import           Haskll.Syntax.Expression (Expression (..), GrammarDef (..), Term (..),
+                                           TokenExp (..))
 
 ----------------------------------------------------------------------------
 -- Re-written combinators
@@ -52,7 +45,7 @@ betweenMatching :: Char -> Char -> Parser Text
 betweenMatching l r =
     fmap T.pack $ try $ between (char' l) (char' r) betwMatchGo
   where
-    char' :: Char -> Parser String
+    char' :: Char -> Parser [Char]
     char' c = (:[]) <$> satisfy (== c)
     nonParenth = some $ satisfy $ (/= r) &^& (/= l)
     parenthed x = mconcat <$> sequence [char' l, x, char' r]
@@ -64,9 +57,9 @@ betweenMatching l r =
 optList :: Parser [a] -> Parser [a]
 optList p = fromMaybe [] <$> optional p
 
-kek,tst :: Parser String
-kek = string "kek"
-tst = try $ kek `post` string "*"
+-- kek,tst :: Parser String
+-- kek = string "kek"
+-- tst = try $ kek `post` string "*"
 
 ----------------------------------------------------------------------------
 -- Grammar parsing
@@ -79,8 +72,8 @@ wordCamel = do
     tl <- many $ satisfy isAlphaNum
     pure $ T.pack $ hd:tl
 wordConstructor = do
-    hd <- try $ satisfy $ (isUpper &^& isAlphaNum) |^| (`elem` ("[]"::String))
-    tl <- many $ satisfy $ isAlphaNum |^| (`elem` ("[]."::String))
+    hd <- try $ satisfy $ (isUpper &^& isAlphaNum) |^| (`elem` ("[]"::[Char]))
+    tl <- many $ satisfy $ isAlphaNum |^| (`elem` ("[]."::[Char]))
     pure $ T.pack $ hd:tl
 
 grammarDef :: Parser GrammarDef
@@ -89,7 +82,8 @@ grammarDef = do
     gImports <- optional $ try $ lexem (string "@imports") >> lexem (betweenMatching '{' '}')
     gMembers <- optional $ try $ lexem (string "@members") >> lexem (betweenMatching '{' '}')
     gExprs <- many expression
-    gTokens <- many token
+    gTokens <- tokens
+    eof
     pure $ GrammarDef {..}
 
 expression :: Parser Expression
@@ -159,6 +153,8 @@ term = termAlt
             ]
         pure $ modifier subt
 
+tokens :: Parser [TokenExp]
+tokens = lexem $ token `sepBy` spaceCmt
 
 token :: Parser TokenExp
 token = try $ do
@@ -166,9 +162,16 @@ token = try $ do
     void $ lexem $ string ":"
     skip <- optional $ string "SKIP"
     void $ lexem $ string "/"
-    regex <- some $ satisfy (/= '/')
-    void $ string "/" >> lexem (string ";")
-    pure $ TokenExp name (T.pack regex) (isJust skip)
+    regex <- T.strip . T.pack <$> some (satisfy (/= ';'))
+    unless (T.last regex == '/') $ fail "Last symbol of regex should be /"
+    void $ lexem (string ";")
+    pure $ TokenExp name (T.dropEnd 1 regex) (isJust skip)
 
-tokens :: Parser [TokenExp]
-tokens = lexem $ token `sepBy` spaceCmt
+----------------------------------------------------------------------------
+-- Launching
+----------------------------------------------------------------------------
+
+parseGrammar :: Text -> Either Text GrammarDef
+parseGrammar s =
+    first (T.pack . parseErrorPretty) $
+    parse grammarDef "Grammar definition" s

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 -- | This module defines haskll grammar
-module Grammar.Expression
+module Haskll.Syntax.Expression
        ( GrammarDef (..)
        , Expression (..)
        , Term (..)

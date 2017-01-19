@@ -68,9 +68,10 @@ WHITESPACE: SKIP /[ \t]+/;
 HOLE:            /_/;
 TRUE:            /True/;
 FALSE:           /False/;
-INTLIT:             /[+-]?[0-9]+/;
+// test comment
+INTLIT:          /[+-]?[0-9]+/;
 INFIX:           /([\+\-\*\<\>\^\/] | '==' | '/=' | '<=' | '>=')/;
 NAME:            /[a-z][a-zA-Z\'_0-9]*/;
-CHARLIT:         /[\'][a-zA-Z0-9]?[\']/;
+CHARLIT:         /[\'][a-zA-Z0-9]?[\']/; // test comment
 STRLIT:          /[\"][a-zA-Z0-9]*[\"]/;
 NL:              /[\r\n]+/;
