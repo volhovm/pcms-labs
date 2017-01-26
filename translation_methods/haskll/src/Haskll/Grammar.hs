@@ -10,7 +10,7 @@ import           Universum
 import           Haskll.Syntax.Expression (Expression (..), GrammarDef (..), Term (..))
 import           Haskll.Syntax.Parser
 import           Haskll.Types             (BindType (..), GrammarRule (..), ProdItem (..),
-                                           bindVar)
+                                           bindVar, prettyGrammarRule)
 
 data GState = GState
     { _subGrams  :: [GrammarRule]
@@ -22,6 +22,9 @@ makeLenses ''GState
 newtype GrammarT a = GrammarT
     { toGrammarT :: State GState a
     } deriving (Functor, Applicative, Monad, MonadState GState)
+
+nontermEmpty :: Text -> ProdItem
+nontermEmpty n = ProdNonterminal n Nothing Nothing
 
 genRule :: Term -> GrammarT Text
 genRule t = do
@@ -35,10 +38,10 @@ nonTermGenCombinator :: Term
                      -> (ProdItem -> ProdItem -> [[ProdItem]])
                      -> GrammarT ProdItem
 nonTermGenCombinator t combine = do
-    t' <- collectItem t
+    t' <- nontermEmpty <$> genRule t
     num <- genNumber <<+= 1
     let genName = "_generatedComb" <> show num
-        prodItemsCases = combine t' (ProdNonterminal genName Nothing Nothing)
+        prodItemsCases = combine t' (nontermEmpty genName)
         gRule = map (\items -> GrammarRule genName items [] [] []) prodItemsCases
     subGrams <>= gRule
     pure $ ProdNonterminal genName Nothing Nothing
@@ -58,13 +61,13 @@ collectItem :: Term -> GrammarT ProdItem
 collectItem (Subterm t)       = collectItem t
 collectItem (TermToken tName) = pure $ ProdTerminal tName Nothing
 collectItem (TermOther t mc)  = pure $ ProdNonterminal t mc Nothing
-collectItem (_ :&: _)         = panic "collectItem: encountered :&:"
+collectItem t@(_ :&: _)       = panic $ "collectItem: encountered :&: " <> show t
 collectItem (v :+=: t)        = collectItem t <&> bindVar .~ Just (v, BindAdd)
 collectItem (v ::=: t)        = collectItem t <&> bindVar .~ Just (v, BindAssign)
 collectItem t@(_ :|: _)       = nonTermGen t
 collectItem t@(WithCode _ _)  = nonTermGen t
-collectItem ((:*:) t)         = nonTermGenCombinator t (\t' genT -> [[ProdEpsilon], [genT, t']])
-collectItem ((:+:) t)         = nonTermGenCombinator t (\t' genT -> [[genT, t']])
+collectItem ((:*:) t)         = nonTermGenCombinator t (\t' genT -> [[ProdEpsilon], [t', genT]])
+collectItem ((:+:) t)         = nonTermGenCombinator t (\t' genT -> [[t', genT]])
 collectItem ((:?:) t)         = nonTermGenCombinator t (\t' _    -> [[ProdEpsilon], [t']])
 
 fromExpression :: Expression -> GrammarT [GrammarRule]
@@ -88,8 +91,6 @@ convertGrammar es = outputed ++ stateAfter ^. subGrams
     topLvl = concat <$> mapM fromExpression es
 
 kek  = do
-    t <- TIO.readFile "resources/test2.g"
-    f <- TIO.readFile "resources/simple.sf"
-    let (Right g) = parseGrammar t
-    print $ convertGrammar $ gExprs g
+    (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
+    forM_ (convertGrammar $ gExprs g) $ putStrLn . prettyGrammarRule
     undefined

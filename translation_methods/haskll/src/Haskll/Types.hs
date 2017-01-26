@@ -9,10 +9,12 @@ module Haskll.Types
        , pArgs
        , bindVar
        , GrammarRule (..)
+       , prettyGrammarRule
        , Token (..)
        ) where
 
 import           Control.Lens (makeLenses)
+import qualified Data.Text    as T
 import           Universum
 
 type Attributes = [(Text,Text)]
@@ -41,6 +43,15 @@ data GrammarRule = GrammarRule
     , gGeneratingAttrs :: Attributes
     , gLocals          :: Attributes
     } deriving (Show)
+
+prettyGrammarRule :: GrammarRule -> Text
+prettyGrammarRule GrammarRule{..} =
+    gName <> " -> " <> T.intercalate " " (map prettyItem gProd)
+  where
+    prettyItem ProdEpsilon          = "eps"
+    prettyItem (ProdCode _)         = "<code>"
+    prettyItem ProdTerminal {..}    = _pName
+    prettyItem ProdNonterminal {..} = _pName
 
 -- Token. After tokenizing the text is just a list of tokens.
 data Token = Token
