@@ -8,6 +8,7 @@ module Haskll.Syntax.Expression
        , TokenExp (..)
        ) where
 
+import           Haskll.Types (Attributes)
 import           Universum
 
 type Variable = Text
@@ -25,9 +26,9 @@ data GrammarDef = GrammarDef
 -- | Single grammar expression
 data Expression = Expression
     { eName            :: Text
-    , eReceivingAttrs  :: [(Text,Text)] -- (type,varname)
-    , eGeneratingAttrs :: [(Text,Text)]
-    , eLocals          :: [(Text,Text)]
+    , eReceivingAttrs  :: Attributes
+    , eGeneratingAttrs :: Attributes
+    , eLocals          :: Attributes
     , eTerm            :: Term
     } deriving (Show)
 

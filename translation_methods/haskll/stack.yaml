@@ -4,6 +4,6 @@ packages:
 nix:
   shell-file: shell.nix
 extra-deps: 
-- universum-0.1.12
+- universum-0.2.1
 flags: {}
 extra-package-dbs: []
