@@ -19,7 +19,7 @@ import           Universum
 
 type Attributes = [(Text,Text)]
 
-data BindType = BindAdd | BindAssign deriving Show
+data BindType = BindAdd | BindAssign deriving (Show,Eq,Ord)
 
 -- Producable item on the rhs of grammar rule.
 data ProdItem
@@ -32,7 +32,7 @@ data ProdItem
                       , _pArgs   :: Maybe Text
                       , _bindVar :: Maybe (Text, BindType)
                       }
-    deriving (Show)
+    deriving (Show,Eq,Ord)
 
 makeLenses ''ProdItem
 
@@ -42,13 +42,13 @@ data GrammarRule = GrammarRule
     , gReceivingAttrs  :: Attributes
     , gGeneratingAttrs :: Attributes
     , gLocals          :: Attributes
-    } deriving (Show)
+    } deriving (Show,Eq,Ord)
 
 prettyGrammarRule :: GrammarRule -> Text
 prettyGrammarRule GrammarRule{..} =
     gName <> " -> " <> T.intercalate " " (map prettyItem gProd)
   where
-    prettyItem ProdEpsilon          = "eps"
+    prettyItem ProdEpsilon          = "ε"
     prettyItem (ProdCode _)         = "<code>"
     prettyItem ProdTerminal {..}    = _pName
     prettyItem ProdNonterminal {..} = _pName

@@ -1,9 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 -- | Actions on grammar
 
-module Haskll.Grammar where
+module Haskll.Grammar (convertGrammar) where
 
-import           Control.Lens             (makeLenses, (<<+=), (<>=))
+import           Control.Lens             (makeLenses, uses, (%=), (<<+=), (<>=))
+import qualified Data.Map                 as M
 import qualified Data.Text.IO             as TIO
 import           Universum
 
@@ -12,9 +13,19 @@ import           Haskll.Syntax.Parser
 import           Haskll.Types             (BindType (..), GrammarRule (..), ProdItem (..),
                                            bindVar, prettyGrammarRule)
 
+
+data Combinator = CMany | CSome | COpt deriving (Show,Eq,Ord)
+
+combApply :: Combinator -> ProdItem -> ProdItem -> [[ProdItem]]
+combApply CMany t' genT = [[ProdEpsilon], [t', genT]]
+combApply CSome t' genT = [[t', genT]]
+combApply COpt t' _     = [[ProdEpsilon], [t']]
+
 data GState = GState
-    { _subGrams  :: [GrammarRule]
-    , _genNumber :: Int
+    { _rulesReuse     :: Map Term Text
+    , _combRulesReuse :: Map (Term, Combinator) Text
+    , _subGrams       :: [GrammarRule]
+    , _genNumber      :: Int
     } deriving (Show)
 
 makeLenses ''GState
@@ -28,27 +39,37 @@ nontermEmpty n = ProdNonterminal n Nothing Nothing
 
 genRule :: Term -> GrammarT Text
 genRule t = do
-    num <- genNumber <<+= 1
-    let genName = "_generated" <> show num
-    expr <- fromExpression $ Expression genName [] [] [] t
-    subGrams <>= expr
-    pure genName
+    exists <- uses rulesReuse $ M.lookup t
+    maybe genNew pure exists
+  where
+    genNew = do
+        num <- genNumber <<+= 1
+        let genName = "_gen" <> show num
+        expr <- fromExpression $ Expression genName [] [] [] t
+        rulesReuse %= M.insert t genName
+        subGrams <>= expr
+        pure genName
 
 nonTermGenCombinator :: Term
-                     -> (ProdItem -> ProdItem -> [[ProdItem]])
+                     -> Combinator
                      -> GrammarT ProdItem
-nonTermGenCombinator t combine = do
-    t' <- nontermEmpty <$> genRule t
-    num <- genNumber <<+= 1
-    let genName = "_generatedComb" <> show num
-        prodItemsCases = combine t' (nontermEmpty genName)
-        gRule = map (\items -> GrammarRule genName items [] [] []) prodItemsCases
-    subGrams <>= gRule
-    pure $ ProdNonterminal genName Nothing Nothing
+nonTermGenCombinator t comb =
+    maybe onGen onReuse =<< uses combRulesReuse (M.lookup (t,comb))
+  where
+    onReuse = pure . nontermEmpty
+    onGen = do
+        t' <- nontermEmpty <$> genRule t
+        num <- genNumber <<+= 1
+        let genName = "_genComb" <> show num
+            prodItemsCases = combApply comb t' (nontermEmpty genName)
+            gRule = map (\items -> GrammarRule genName items [] [] []) prodItemsCases
+        subGrams <>= gRule
+        combRulesReuse %= M.insert (t,comb) genName
+        pure $ nontermEmpty genName
 
 collectItems :: Term -> GrammarT [ProdItem]
 collectItems (t1 :&: t2)       = (++) <$> collectItems t1 <*> collectItems t2
-collectItems (WithCode t code) = (ProdCode code :) <$> collectItems t
+collectItems (WithCode t code) = (++ [ProdCode code]) <$> collectItems t
 collectItems (Subterm t)       = collectItems t
 collectItems t                 = one <$> collectItem t
 
@@ -66,9 +87,9 @@ collectItem (v :+=: t)        = collectItem t <&> bindVar .~ Just (v, BindAdd)
 collectItem (v ::=: t)        = collectItem t <&> bindVar .~ Just (v, BindAssign)
 collectItem t@(_ :|: _)       = nonTermGen t
 collectItem t@(WithCode _ _)  = nonTermGen t
-collectItem ((:*:) t)         = nonTermGenCombinator t (\t' genT -> [[ProdEpsilon], [t', genT]])
-collectItem ((:+:) t)         = nonTermGenCombinator t (\t' genT -> [[t', genT]])
-collectItem ((:?:) t)         = nonTermGenCombinator t (\t' _    -> [[ProdEpsilon], [t']])
+collectItem ((:*:) t)         = nonTermGenCombinator t CMany
+collectItem ((:+:) t)         = nonTermGenCombinator t CSome
+collectItem ((:?:) t)         = nonTermGenCombinator t COpt
 
 fromExpression :: Expression -> GrammarT [GrammarRule]
 fromExpression Expression {..} = topOr eTerm
@@ -87,10 +108,9 @@ fromExpression Expression {..} = topOr eTerm
 convertGrammar :: [Expression] -> [GrammarRule]
 convertGrammar es = outputed ++ stateAfter ^. subGrams
   where
-    (outputed,stateAfter) = runState (toGrammarT topLvl) (GState [] 0)
+    (outputed,stateAfter) = runState (toGrammarT topLvl) (GState M.empty M.empty [] 0)
     topLvl = concat <$> mapM fromExpression es
 
 kek  = do
     (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
     forM_ (convertGrammar $ gExprs g) $ putStrLn . prettyGrammarRule
-    undefined

@@ -45,7 +45,7 @@ data Term
     | TermToken Text
     | TermOther Text (Maybe Code)
     | Subterm Term
-    deriving (Show)
+    deriving (Show,Eq,Ord)
 
 -- | Token expression (definition)
 data TokenExp = TokenExp
