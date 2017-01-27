@@ -111,6 +111,6 @@ convertGrammar es = outputed ++ stateAfter ^. subGrams
     (outputed,stateAfter) = runState (toGrammarT topLvl) (GState M.empty M.empty [] 0)
     topLvl = concat <$> mapM fromExpression es
 
-kek  = do
-    (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
+kek = do
+    (Right g) <- parseGrammar <$> TIO.readFile "resources/test3.g"
     forM_ (convertGrammar $ gExprs g) $ putStrLn . prettyGrammarRule

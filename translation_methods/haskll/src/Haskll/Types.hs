@@ -8,6 +8,7 @@ module Haskll.Types
        , pName
        , pArgs
        , bindVar
+       , prettyProdItem
        , GrammarRule (..)
        , prettyGrammarRule
        , Token (..)
@@ -36,6 +37,13 @@ data ProdItem
 
 makeLenses ''ProdItem
 
+prettyProdItem :: ProdItem -> Text
+prettyProdItem ProdEpsilon          = "ε"
+prettyProdItem (ProdCode _)         = "<code>"
+prettyProdItem ProdTerminal {..}    = _pName
+prettyProdItem ProdNonterminal {..} = _pName
+
+
 data GrammarRule = GrammarRule
     { gName            :: Text
     , gProd            :: [ProdItem]
@@ -46,12 +54,8 @@ data GrammarRule = GrammarRule
 
 prettyGrammarRule :: GrammarRule -> Text
 prettyGrammarRule GrammarRule{..} =
-    gName <> " -> " <> T.intercalate " " (map prettyItem gProd)
+    gName <> " -> " <> T.intercalate " " (map prettyProdItem gProd)
   where
-    prettyItem ProdEpsilon          = "ε"
-    prettyItem (ProdCode _)         = "<code>"
-    prettyItem ProdTerminal {..}    = _pName
-    prettyItem ProdNonterminal {..} = _pName
 
 -- Token. After tokenizing the text is just a list of tokens.
 data Token = Token

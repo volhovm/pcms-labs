@@ -2,10 +2,13 @@
 {-# LANGUAGE TemplateHaskell  #-}
 -- | Code generation
 
-module Haskll.Codegen () where
+module Haskll.Codegen
+       ( setFirst
+       , setFollow
+       ) where
 
-import           Control.Lens             (at, makeLenses, (%=))
-import           Data.List                (nub)
+import           Control.Lens             (ASetter, at, makeLenses, (%=))
+import           Data.List                (delete, nub, (!!))
 import           Data.Map                 ((!))
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
@@ -17,30 +20,73 @@ import           Haskll.Grammar           (convertGrammar)
 import           Haskll.Syntax.Expression (gExprs)
 import           Haskll.Syntax.Parser     (parseGrammar)
 import           Haskll.Types             (BindType (..), GrammarRule (..), ProdItem (..),
-                                           bindVar, pName, prettyGrammarRule)
+                                           bindVar, pName, prettyGrammarRule,
+                                           prettyProdItem)
 
-data FirstState = FirstState { _fsMap :: Map Text [ProdItem] }
+data MapWrap a b = MapWrap { _mapw :: Map a b }
 
-makeLenses ''FirstState
+makeLenses ''MapWrap
+
+(<>%=)
+    :: (MonadState s m, Functor f, Eq b)
+    => ASetter s s (f a) (f [b]) -> (a -> [b]) -> m ()
+(<>%=) a b = a %= fmap (nub . b)
+infixr 8 <>%=
 
 setFirst :: [GrammarRule] -> Map Text [ProdItem]
-setFirst rules = _fsMap $ execState loop initState
+setFirst rules = _mapw $ execState loop initState
   where
-    initState = FirstState $ M.fromList $ map (\x -> (gName x,[])) rules
-    loop :: (MonadState FirstState m) => m ()
+    initState = MapWrap $ M.fromList $ map (\x -> (gName x,[])) rules
+    loop :: (MonadState (MapWrap Text [ProdItem]) m) => m ()
     loop = do
-        init <- use fsMap
+        init <- use mapw
         forM_ rules $ \GrammarRule{..} -> case unsafeHead gProd of
-            p@ProdTerminal {..} -> fsMap . at gName %= fmap (nub . (p:))
+            ProdCode _  -> pass
             p@ProdNonterminal {..} -> do
-                (curfirst :: Map Text [ProdItem]) <- use fsMap
-                fsMap . at gName %= fmap (nub . ((curfirst ! (p ^. pName))++))
-            _ -> pass
-        after <- use fsMap
+                curfirst <- use mapw
+                mapw . at gName <>%= ((curfirst ! (p ^. pName))++)
+            p -> mapw . at gName <>%= (p:)
+        after <- use mapw
+        when (init /= after) loop
+
+-- head should be starting terminal
+setFollow :: [GrammarRule] -> Map Text [Maybe ProdItem]
+setFollow rules = _mapw $ execState loop initState
+  where
+    sfirst = setFirst rules
+    splitItems :: [a] -> [([a],a,[a])]
+    splitItems items =
+        map (\i -> (take i items, items !! i, drop (i+1) items)) [0..length items - 1]
+    initState = MapWrap $ M.fromList $
+        (gName $ unsafeHead rules, [Nothing]) : map (\x -> (gName x,[])) (drop 1 rules)
+    loop = do
+        init <- use mapw
+        forM_ rules $ \GrammarRule{..} -> do
+            let splitFoo (_,focus,after@ProdNonterminal{..}:_) = do
+                    let tmp1 = sfirst ! view pName after
+                    mapw . at (focus ^. pName) <>%=
+                        (map Just (delete ProdEpsilon tmp1) ++)
+                    when (ProdEpsilon `elem` tmp1) $ do
+                        curfollow <- use mapw
+                        mapw . at (focus ^. pName) <>%= ((curfollow ! gName)++)
+                splitFoo (_,focus,t@ProdTerminal{..}:_) = do
+                    mapw . at (focus ^. pName) <>%= (Just t :)
+                splitFoo (_,focus,ProdEpsilon:_) = do
+                    curfollow <- use mapw
+                    mapw . at (focus ^. pName) <>%= ((curfollow ! gName)++)
+                splitFoo (_,focus,[]) = do -- duh, copypaste
+                    curfollow <- use mapw
+                    mapw . at (focus ^. pName) <>%= ((curfollow ! gName)++)
+                splitFoo _ = pass
+            forM_ (splitItems gProd) splitFoo
+        after <- use mapw
         when (init /= after) loop
 
 kek  = do
-    (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
+    (Right g) <- parseGrammar <$> TIO.readFile "resources/test3.g"
     let expressions = convertGrammar $ gExprs g
     forM_ (M.assocs $ setFirst expressions) $ \(text,items) ->
-        putStrLn $ text <> " -> \"" <> T.intercalate "\", \"" (map (view pName) items) <> "\""
+        putStrLn $ text <> " -> \"" <> T.intercalate "\", \"" (map prettyProdItem items) <> "\""
+    forM_ (M.assocs $ setFollow expressions) $ \(text,items) -> do
+        let realItems = map (maybe "$" prettyProdItem) items
+        putStrLn $ text <> " -> \"" <> T.intercalate "\", \"" realItems <> "\""
