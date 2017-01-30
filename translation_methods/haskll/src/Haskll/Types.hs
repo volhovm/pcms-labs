@@ -46,7 +46,7 @@ prettyProdItem ProdNonterminal {..} = _pName
 
 data GrammarRule = GrammarRule
     { grName            :: Text
-    , grProd            :: [ProdItem]
+    , grProds           :: [[ProdItem]]
     , grReceivingAttrs  :: Attributes
     , grGeneratingAttrs :: Attributes
     , grLocals          :: Attributes
@@ -54,8 +54,8 @@ data GrammarRule = GrammarRule
 
 prettyGrammarRule :: GrammarRule -> Text
 prettyGrammarRule GrammarRule{..} =
-    grName <> " -> " <> T.intercalate " " (map prettyProdItem grProd)
-  where
+    grName <> " -> " <>
+    T.intercalate " | " (map (T.intercalate " " . map prettyProdItem) grProds)
 
 -- Token. After tokenizing the text is just a list of tokens.
 data Token = Token

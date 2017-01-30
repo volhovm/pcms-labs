@@ -57,7 +57,7 @@ appList :: (Show a) => Text -> Text -> [a] -> TextT ()
 appList = appTerm identity
 
 genRule :: GrammarRule -> TextT ()
-genRule = const pass
+genRule GrammarRule{..} = pass
 
 genParser :: GrammarDef -> Text
 genParser g = snd $ flip runState "" $ do
@@ -65,10 +65,10 @@ genParser g = snd $ flip runState "" $ do
     whenJust (gImports g) appLine
     appText $ T.unlines $ drop 4 $ T.lines codegenBase
 
-    let expressions = convertGrammar $ gExprs g
+    let grammarRules = convertGrammar $ gExprs g
 
     -- First/Follow
-    let (firstS, followS) = setFirstFollow expressions
+    let (firstS, followS) = setFirstFollow grammarRules
     appComment "First/follow"
     let firstComment =
             T.intercalate "\n" $
@@ -88,6 +88,10 @@ genParser g = snd $ flip runState "" $ do
     let tokens = gTokens g
     appComment "Tokens"
     appNL >> appList "tokensGen" "[TokenExp]" tokens
+
+    -- Rules
+    appComment "Rules"
+    forM_ grammarRules genRule
 
 ----------------------------------------------------------------------------
 -- Trash

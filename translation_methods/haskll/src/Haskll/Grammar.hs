@@ -1,15 +1,21 @@
 {-# LANGUAGE TemplateHaskell #-}
 -- | Actions on grammar
 
-module Haskll.Grammar (convertGrammar) where
+module Haskll.Grammar
+       ( convertGrammar
+       , testConvertGrammar
+       ) where
 
 import           Control.Lens             (makeLenses, uses, (%=), (<<+=), (<>=))
 import qualified Data.Map                 as M
+import qualified Data.Text.IO             as TIO
 import           Universum
 
 import           Haskll.Syntax.Expression (Expression (..), Term (..))
+import           Haskll.Syntax.Expression (gExprs)
+import           Haskll.Syntax.Parser     (parseGrammar)
 import           Haskll.Types             (BindType (..), GrammarRule (..), ProdItem (..),
-                                           bindVar)
+                                           bindVar, prettyGrammarRule)
 
 
 data Combinator = CMany | CSome | COpt deriving (Show,Eq,Ord)
@@ -45,7 +51,7 @@ genRule t = do
         let genName = "_gen" <> show num
         expr <- fromExpression $ Expression genName [] [] [] t
         rulesReuse %= M.insert t genName
-        subGrams <>= expr
+        subGrams <>= [expr]
         pure genName
 
 nonTermGenCombinator :: Term
@@ -60,8 +66,8 @@ nonTermGenCombinator t comb =
         num <- genNumber <<+= 1
         let genName = "_genComb" <> show num
             prodItemsCases = combApply comb t' (nontermEmpty genName)
-            gRule = map (\items -> GrammarRule genName items [] [] []) prodItemsCases
-        subGrams <>= gRule
+            gRule = GrammarRule genName prodItemsCases [] [] []
+        subGrams <>= [gRule]
         combRulesReuse %= M.insert (t,comb) genName
         pure $ nontermEmpty genName
 
@@ -89,8 +95,10 @@ collectItem ((:*:) t)         = nonTermGenCombinator t CMany
 collectItem ((:+:) t)         = nonTermGenCombinator t CSome
 collectItem ((:?:) t)         = nonTermGenCombinator t COpt
 
-fromExpression :: Expression -> GrammarT [GrammarRule]
-fromExpression Expression {..} = topOr eTerm
+fromExpression :: Expression -> GrammarT GrammarRule
+fromExpression Expression {..} = do
+    grProds <- topOr eTerm
+    pure $ GrammarRule {..}
   where
     grName = eName
     grReceivingAttrs = eReceivingAttrs
@@ -98,18 +106,16 @@ fromExpression Expression {..} = topOr eTerm
     grLocals = eLocals
     topOr (t1 :|: t2) = (++) <$> topOr t1 <*> topOr t2
     topOr (Subterm t) = topOr t
-    topOr t           = (:[]) <$> topExp t
-    topExp t1 = do
-        grProd <- collectItems t1
-        pure $ GrammarRule {.. }
+    topOr t           = (:[]) <$> collectItems t
 
+-- | Converts set of expressions into grammar rules
 convertGrammar :: [Expression] -> [GrammarRule]
 convertGrammar es = outputed ++ stateAfter ^. subGrams
   where
     (outputed,stateAfter) = runState (toGrammarT topLvl) (GState M.empty M.empty [] 0)
-    topLvl = concat <$> mapM fromExpression es
+    topLvl = mapM fromExpression es
 
--- kek :: IO ()
--- kek = do
---     (Right g) <- parseGrammar <$> TIO.readFile "resources/test3.g"
---     forM_ (convertGrammar $ gExprs g) $ putStrLn . prettyGrammarRule
+testConvertGrammar :: IO ()
+testConvertGrammar = do
+    (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
+    forM_ (convertGrammar $ gExprs g) $ putStrLn . prettyGrammarRule

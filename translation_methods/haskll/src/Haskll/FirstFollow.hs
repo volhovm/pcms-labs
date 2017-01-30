@@ -47,12 +47,13 @@ setFirst rules = _mapw $ execState loop initState
     loop :: (MonadState (MapWrap Text [ProdItem]) m) => m ()
     loop = do
         init <- use mapw
-        forM_ rules $ \GrammarRule{..} -> case unsafeHead grProd of
-            ProdCode _  -> pass
-            p@ProdNonterminal {..} -> do
-                curfirst <- use mapw
-                mapw . at grName <>%= ((curfirst ! (p ^. pName))++)
-            p -> mapw . at grName <>%= (p:)
+        forM_ rules $ \GrammarRule{..} ->
+            forM_ grProds $ \grProd -> case unsafeHead grProd of
+                ProdCode _  -> pass
+                p@ProdNonterminal {..} -> do
+                    curfirst <- use mapw
+                    mapw . at grName <>%= ((curfirst ! (p ^. pName))++)
+                p -> mapw . at grName <>%= (p:)
         after <- use mapw
         when (init /= after) loop
 
@@ -87,7 +88,7 @@ setFirstFollow rules = (sfirst, _mapw $ execState loop initState)
                     curfollow <- use mapw
                     mapw . at (focus ^. pName) <>%= ((curfollow ! grName gCurrent)++)
                 splitFoo _ = pass
-            forM_ (splitItems $ grProd gCurrent) splitFoo
+            forM_ (grProds gCurrent) $ \grProd -> forM_ (splitItems grProd) splitFoo
         after <- use mapw
         when (init /= after) loop
 
