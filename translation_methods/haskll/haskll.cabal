@@ -14,8 +14,12 @@ cabal-version:       >=1.10
 data-files:          resources/test1.g
 
 library
-  exposed-modules:     Haskll.Syntax.Expression
+  exposed-modules:     Haskll.Codegen
+                     , Haskll.CodegenBase
+                     , Haskll.FirstFollow
+                     , Haskll.Syntax.Expression
                      , Haskll.Syntax.Parser
+                     , Haskll.Grammar
                      , Haskll.Tokenizer
                      , Haskll.Types
   -- other-modules:
@@ -26,6 +30,7 @@ library
                      , file-embed >= 0.0.10
                      , lens >= 4.14
                      , megaparsec >= 5.0.1
+                     , mtl >= 2.2.1
                      , regex-pcre >= 0.94.4
                      , text
                      , universum

@@ -5,13 +5,11 @@ module Haskll.Grammar (convertGrammar) where
 
 import           Control.Lens             (makeLenses, uses, (%=), (<<+=), (<>=))
 import qualified Data.Map                 as M
-import qualified Data.Text.IO             as TIO
 import           Universum
 
-import           Haskll.Syntax.Expression (Expression (..), GrammarDef (..), Term (..))
-import           Haskll.Syntax.Parser
+import           Haskll.Syntax.Expression (Expression (..), Term (..))
 import           Haskll.Types             (BindType (..), GrammarRule (..), ProdItem (..),
-                                           bindVar, prettyGrammarRule)
+                                           bindVar)
 
 
 data Combinator = CMany | CSome | COpt deriving (Show,Eq,Ord)
@@ -94,15 +92,15 @@ collectItem ((:?:) t)         = nonTermGenCombinator t COpt
 fromExpression :: Expression -> GrammarT [GrammarRule]
 fromExpression Expression {..} = topOr eTerm
   where
-    gName = eName
-    gReceivingAttrs = eReceivingAttrs
-    gGeneratingAttrs = eGeneratingAttrs
-    gLocals = eLocals
+    grName = eName
+    grReceivingAttrs = eReceivingAttrs
+    grGeneratingAttrs = eGeneratingAttrs
+    grLocals = eLocals
     topOr (t1 :|: t2) = (++) <$> topOr t1 <*> topOr t2
     topOr (Subterm t) = topOr t
     topOr t           = (:[]) <$> topExp t
     topExp t1 = do
-        gProd <- collectItems t1
+        grProd <- collectItems t1
         pure $ GrammarRule {.. }
 
 convertGrammar :: [Expression] -> [GrammarRule]
@@ -111,7 +109,7 @@ convertGrammar es = outputed ++ stateAfter ^. subGrams
     (outputed,stateAfter) = runState (toGrammarT topLvl) (GState M.empty M.empty [] 0)
     topLvl = concat <$> mapM fromExpression es
 
-kek :: IO ()
-kek = do
-    (Right g) <- parseGrammar <$> TIO.readFile "resources/test3.g"
-    forM_ (convertGrammar $ gExprs g) $ putStrLn . prettyGrammarRule
+-- kek :: IO ()
+-- kek = do
+--     (Right g) <- parseGrammar <$> TIO.readFile "resources/test3.g"
+--     forM_ (convertGrammar $ gExprs g) $ putStrLn . prettyGrammarRule

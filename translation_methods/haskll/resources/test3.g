@@ -1,5 +1,10 @@
 grammar Arithmetic;
 
+@imports {
+import Data.Maybe (fromJust)
+import Data.Monoid ((<>))
+}
+
 sum: mult sum1;
 sum1: (PLUS mult sum1)?;
 mult: single mult1;
