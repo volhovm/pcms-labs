@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | Module that provides parsing capabilities for haskll grammar
@@ -131,12 +132,13 @@ term = termAlt
         varName <- wordCamel
         binding <-
             lexem $
-            (string "+=" >> pure (:+=:)) <|>
             (string "="  >> pure (::=:)) <|>
             (string ":=" >> pure (::=:))
         subt <- assoc0
         pure $ binding varName subt
-    termToken = TermToken <$> try wordUpper
+    termToken = try wordUpper >>= \case
+        "EPSILON" -> pure $ TermEpsilon
+        a         -> pure $ TermToken a
     termOther = try $ do
         otherName <- try wordCamel
         callParams <- optional (betweenMatching '[' ']')

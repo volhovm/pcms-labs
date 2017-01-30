@@ -3,7 +3,6 @@
 
 module Haskll.Types
        ( Attributes
-       , BindType (..)
        , ProdItem (..)
        , pName
        , pArgs
@@ -20,18 +19,16 @@ import           Universum
 
 type Attributes = [(Text,Text)]
 
-data BindType = BindAdd | BindAssign deriving (Show,Eq,Ord)
-
 -- Producable item on the rhs of grammar rule.
 data ProdItem
     = ProdTerminal { _pName   :: Text
-                   , _bindVar :: Maybe (Text, BindType)
+                   , _bindVar :: Maybe Text
                    }
     | ProdCode Text
     | ProdEpsilon
     | ProdNonterminal { _pName   :: Text
                       , _pArgs   :: Maybe Text
-                      , _bindVar :: Maybe (Text, BindType)
+                      , _bindVar :: Maybe Text
                       }
     deriving (Show,Eq,Ord)
 
@@ -61,4 +58,4 @@ prettyGrammarRule GrammarRule{..} =
 data Token = Token
     { tokenName :: Text
     , tokenText :: Text
-    } deriving (Show)
+    } deriving (Eq,Ord,Show)

@@ -39,12 +39,12 @@ data Term
     | (:*:) Term
     | (:+:) Term
     | (:?:) Term
-    | Variable :+=: Term
     | Variable ::=: Term
     | WithCode Term Code
     | TermToken Text
     | TermOther Text (Maybe Code)
     | Subterm Term
+    | TermEpsilon
     deriving (Show,Eq,Ord)
 
 -- | Token expression (definition)

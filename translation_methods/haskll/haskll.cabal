@@ -15,7 +15,6 @@ data-files:          resources/test1.g
 
 library
   exposed-modules:     Haskll.Codegen
-                     , Haskll.CodegenBase
                      , Haskll.FirstFollow
                      , Haskll.Syntax.Expression
                      , Haskll.Syntax.Parser
@@ -31,6 +30,7 @@ library
                      , lens >= 4.14
                      , megaparsec >= 5.0.1
                      , mtl >= 2.2.1
+                     , pretty-tree
                      , regex-pcre >= 0.94.4
                      , text
                      , universum

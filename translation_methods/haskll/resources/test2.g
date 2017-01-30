@@ -5,7 +5,10 @@ grammar Functional;
   , asArgs   :: Bool
 }
 
-topLevel: NL? (f+=func NL)* f+=func NL? EOF              { Helpers.showResult($f); };
+topLevel: NL? manyFunc f+=func NL? EOF              { Helpers.showResult($f); };
+manyFunc returns [[String] res]
+    : f=func NL manyFunc
+    | EPSILON;
 
 func returns [String res]
     : NAME DOUBLECOLON type (NL decls+=decl[$type.argnum, $NAME.text])+
@@ -47,7 +50,7 @@ term returns [String res, Bool ret]
                                                          { $res = Helpers.genIfThenElse($t1.res,$rt2.res,$rt3.res); $ret = ($rt2.ret || $rt3.ret); }
     | t1=term INFIX t2=term                              { $res = Helpers.genINFIX($INFIX.text,$t1.res,$t2.res); $ret = false; }
     | PARENL t=term PARENR                               { $res = "(" + $t.res + ")"; $ret = $t.ret; }
-    | (LET NL? (f+=func NL)* f+=func NL?) IN (NL? rt=retterm)
+    | LET NL? (f+=func NL)* f+=func NL? IN (NL? rt=retterm)
                                                          { $res = Helpers.genScoped($rt.res,$f); $ret = $rt.ret; }
     | primValue                                          { $res = $primValue.res; $ret = false; }
 //    | n=NAME {asArgs = true;} (ts+=primValue)+

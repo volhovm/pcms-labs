@@ -3,7 +3,9 @@
 -- | First/Follow sets generation
 
 module Haskll.FirstFollow
-       ( setFirst
+       ( FirstSet
+       , FollowSet
+       , setFirst
        , setFollow
        , setFirstFollow
        , testFirstFollow
@@ -24,6 +26,9 @@ import           Haskll.Syntax.Parser     (parseGrammar)
 import           Haskll.Types             (GrammarRule (..), ProdItem (..), pName,
                                            prettyProdItem)
 
+type FirstSet = Map Text [ProdItem]
+type FollowSet = Map Text [Maybe ProdItem]
+
 data MapWrap a b = MapWrap { _mapw :: Map a b }
 makeLenses ''MapWrap
 
@@ -40,7 +45,7 @@ forFiltered predicate action = do
     forM_ (filter predicate $ M.keys inner) $ \k ->
         mapw . at k %= fmap (nub . action)
 
-setFirst :: [GrammarRule] -> Map Text [ProdItem]
+setFirst :: [GrammarRule] -> FirstSet
 setFirst rules = _mapw $ execState loop initState
   where
     initState = MapWrap $ M.fromList $ map (\x -> (grName x,[])) rules
@@ -58,7 +63,7 @@ setFirst rules = _mapw $ execState loop initState
         when (init /= after) loop
 
 -- head should be starting terminal
-setFirstFollow :: [GrammarRule] -> (Map Text [ProdItem], Map Text [Maybe ProdItem])
+setFirstFollow :: [GrammarRule] -> (FirstSet, FollowSet)
 setFirstFollow rules = (sfirst, _mapw $ execState loop initState)
   where
     sfirst = setFirst rules
@@ -92,7 +97,7 @@ setFirstFollow rules = (sfirst, _mapw $ execState loop initState)
         after <- use mapw
         when (init /= after) loop
 
-setFollow :: [GrammarRule] -> Map Text [Maybe ProdItem]
+setFollow :: [GrammarRule] -> FollowSet
 setFollow = snd . setFirstFollow
 
 testFirstFollow :: IO ()

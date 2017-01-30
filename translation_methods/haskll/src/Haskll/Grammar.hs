@@ -14,8 +14,8 @@ import           Universum
 import           Haskll.Syntax.Expression (Expression (..), Term (..))
 import           Haskll.Syntax.Expression (gExprs)
 import           Haskll.Syntax.Parser     (parseGrammar)
-import           Haskll.Types             (BindType (..), GrammarRule (..), ProdItem (..),
-                                           bindVar, prettyGrammarRule)
+import           Haskll.Types             (GrammarRule (..), ProdItem (..), bindVar,
+                                           prettyGrammarRule)
 
 
 data Combinator = CMany | CSome | COpt deriving (Show,Eq,Ord)
@@ -83,12 +83,12 @@ nonTermGen t = do
     pure $ ProdNonterminal generatedName Nothing Nothing
 
 collectItem :: Term -> GrammarT ProdItem
+collectItem TermEpsilon       = pure ProdEpsilon
 collectItem (Subterm t)       = collectItem t
 collectItem (TermToken tName) = pure $ ProdTerminal tName Nothing
 collectItem (TermOther t mc)  = pure $ ProdNonterminal t mc Nothing
 collectItem t@(_ :&: _)       = panic $ "collectItem: encountered :&: " <> show t
-collectItem (v :+=: t)        = collectItem t <&> bindVar .~ Just (v, BindAdd)
-collectItem (v ::=: t)        = collectItem t <&> bindVar .~ Just (v, BindAssign)
+collectItem (v ::=: t)        = collectItem t <&> bindVar .~ Just v
 collectItem t@(_ :|: _)       = nonTermGen t
 collectItem t@(WithCode _ _)  = nonTermGen t
 collectItem ((:*:) t)         = nonTermGenCombinator t CMany
