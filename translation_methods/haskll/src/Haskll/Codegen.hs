@@ -132,9 +132,10 @@ genRule GrammarRule{..} firstS followS = do
         let smallPn = "token" <> pn
         appLine8 $ smallPn <> " <- consumeToken \"" <> pn <> "\""
         appLine8 $ "let retNode" <> show ix <> " = ASTLeaf " <> smallPn
-    consumeItem (ProdNonterminal pn _ var) (Just ix) = do
+    consumeItem (ProdNonterminal pn pargs var) (Just ix) = do
         let varName = fromMaybe pn var
-        appLine8 $ "(retNode" <> show ix <> ", " <> varName <> ") <- parse"<> pn
+        appLine8 $ "(retNode" <> show ix <> ", " <> varName <>
+            ") <- parse"<> pn <> maybe "" (" "<>) pargs
     consumeItem (ProdCode code) _  = forM_ (map T.strip $ T.lines code) appLine8
     consumeItem _ _                    = pass
 
@@ -199,5 +200,7 @@ genParser g = snd $ flip runState "" $ do
 
 kek :: IO ()
 kek  = do
-    (Right g) <- parseGrammar <$> TIO.readFile "resources/test4.g"
-    TIO.writeFile "src/Haskll/Test.hs" $ genParser g
+    g <- parseGrammar <$> TIO.readFile "resources/test4.g"
+    TIO.writeFile "src/Haskll/Test.hs" $ genParser $ either onLeft identity g
+  where
+    onLeft x = panic $ "Could not parse: " <> x
