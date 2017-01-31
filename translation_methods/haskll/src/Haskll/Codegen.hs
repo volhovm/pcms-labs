@@ -65,8 +65,10 @@ genRule GrammarRule{..} firstS followS = do
         (T.concat $ map (<> " -> ") extraArgTypes) <>
         "HParser (AST, " <> extraRetArgTypes <> ")"
     let extraArgNames = map snd grReceivingAttrs
+        -- debug = "putText \"VISITING " <> ruleName <> "\" >>"
+        debug = ""
     appLine $ ruleName <> " " <> (T.concat $ map (<>" ") extraArgNames) <>
-        "= putText \"VISITING " <> ruleName <> "\" >> peekToken >>= \\case"
+        "= " <> debug <> " peekToken >>= \\case"
     forM_ grProds genProd
     genEpsFollow
     genErrorCase

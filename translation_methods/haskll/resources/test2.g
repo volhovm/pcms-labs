@@ -12,7 +12,7 @@ genDecl :: [Text] -> Text -> Text
 genDecl args mainterm =
     T.intercalate "\n" bindings <> "\n" <> mainterm
   where
-    bindings = map (\(a,i) -> a <> " = _" <> show i) $
+    bindings = map (\(a,i) -> "  " <> a <> " = _" <> show i) $
                args `zip` [0..length args - 1]
 
 }
@@ -25,10 +25,10 @@ manyFunc returns [[Text] res]
     ;
 
 func returns [Text res]
-    : NAME DOUBLECOLON functype NL { let fooname = tokenName tokenNAME
+    : NAME DOUBLECOLON functype NL { let fooname = tokenText tokenNAME
                                      let argsnum = functype - 1 }
       decl[argsnum fooname] NL
-      decls[argsnum fooname]       { let res = genFunc fooname functype (decl:decls) }
+      decls[argsnum fooname]       { let res = genFunc fooname argsnum (decl:decls) }
     ;
 
 functype returns [Int argnum]
@@ -49,8 +49,8 @@ decls [Int argnum, Text fooname] returns [[Text] res]
     ;
 
 holeorname returns [Text res]
-    : HOLE { let res = tokenName tokenHOLE }
-    | NAME { let res = tokenName tokenNAME }
+    : HOLE { let res = tokenText tokenHOLE }
+    | NAME { let res = tokenText tokenNAME }
     ;
 
 args returns [[Text] res]
@@ -61,7 +61,7 @@ args returns [[Text] res]
 decl[Int argnum, Text fooname] returns [Text res]
     : NAME args EQUALS NL? HOLE
     { when (length args /= argnum) $ panic $ "decl: number of args in type " <> show argnum <> " doesn't match number of args in decl " <> show (length args)
-      when (tokenName tokenNAME /= fooname) $ panic "decl: fooname doesn't match"
+      when (tokenText tokenNAME /= fooname) $ panic "decl: fooname doesn't match"
       let res = genDecl args "" }
     ;
 
