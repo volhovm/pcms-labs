@@ -76,7 +76,7 @@ setFirstFollow (map filterProdCode -> rules) =
     splitItems items =
         map (\i -> (take i items, items !! i, drop (i+1) items)) [0..length items - 1]
     initState = MapWrap $ M.fromList $
-        (grName $ unsafeHead rules, [Nothing]) : map (\g -> (grName g,[])) (drop 1 rules)
+        ("start", [Nothing]) : map (\g -> (grName g,[])) (drop 1 rules)
     loop :: (MonadState (MapWrap Text [Maybe ProdItem]) m) => m ()
     loop = do
         init <- use mapw
@@ -87,14 +87,13 @@ setFirstFollow (map filterProdCode -> rules) =
                         (map Just (delete ProdEpsilon tmp1) ++)
                     when (ProdEpsilon `elem` tmp1) $ do
                         curfollow <- use mapw
-                        let followA = curfollow ! grName gCurrent
+                        let followA = curfollow ! (after ^. pName)
                         mapw . at (focus ^. pName) <>%= (followA ++)
                 splitFoo (_,focus,t@ProdTerminal{..}:_) = do
                     mapw . at (focus ^. pName) <>%= (Just t :)
-                splitFoo (_,focus,ProdEpsilon:_) = do
-                    curfollow <- use mapw
-                    mapw . at (focus ^. pName) <>%= ((curfollow ! grName gCurrent)++)
-                splitFoo (_,focus,[]) = do -- duh, copypaste
+                splitFoo (b,focus,ProdEpsilon:xs) = splitFoo (b,focus,xs)
+                splitFoo (b,focus,(ProdCode _):xs) = splitFoo (b,focus,xs)
+                splitFoo (_,focus,[]) = do
                     curfollow <- use mapw
                     mapw . at (focus ^. pName) <>%= ((curfollow ! grName gCurrent)++)
                 splitFoo _ = pass

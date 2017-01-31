@@ -18,11 +18,11 @@ import           Haskll.Types             (GrammarRule (..), ProdItem (..), bind
                                            prettyGrammarRule)
 
 
-data Combinator = CMany | CSome | COpt deriving (Show,Eq,Ord)
+data Combinator = CMany | COpt deriving (Show,Eq,Ord)
 
 combApply :: Combinator -> ProdItem -> ProdItem -> [[ProdItem]]
 combApply CMany t' genT = [[ProdEpsilon], [t', genT]]
-combApply CSome t' genT = [[t', genT]]
+--combApply CSome t' genT = [[t', genT]]
 combApply COpt t' _     = [[ProdEpsilon], [t']]
 
 data GState = GState
@@ -73,6 +73,7 @@ nonTermGenCombinator t comb =
 
 collectItems :: Term -> GrammarT [ProdItem]
 collectItems (t1 :&: t2) = (++) <$> collectItems t1 <*> collectItems t2
+collectItems ((:+:) t)   = collectItems (t :&: ((:*:) t))
 collectItems (Subterm t) = collectItems t
 collectItems t           = one <$> collectItem t
 
@@ -87,12 +88,11 @@ collectItem (Subterm t)       = collectItem t
 collectItem (TermToken tName) = pure $ ProdTerminal tName Nothing
 collectItem (TermOther t mc)  = pure $ ProdNonterminal t mc Nothing
 collectItem (WithCode c)      = pure $ ProdCode c
-collectItem t@(_ :&: _)       = panic $ "collectItem: encountered :&: " <> show t
 collectItem (v ::=: t)        = collectItem t <&> bindVar .~ Just v
 collectItem t@(_ :|: _)       = nonTermGen t
 collectItem ((:*:) t)         = nonTermGenCombinator t CMany
-collectItem ((:+:) t)         = nonTermGenCombinator t CSome
 collectItem ((:?:) t)         = nonTermGenCombinator t COpt
+collectItem t                 = panic $ "collectItem: encountered " <> show t
 
 fromExpression :: Expression -> GrammarT GrammarRule
 fromExpression Expression {..} = do

@@ -66,7 +66,7 @@ genRule GrammarRule{..} firstS followS = do
         "HParser (AST, " <> extraRetArgTypes <> ")"
     let extraArgNames = map snd grReceivingAttrs
     appLine $ ruleName <> " " <> (T.concat $ map (<>" ") extraArgNames) <>
-        "= peekToken >>= \\case"
+        "= putText \"VISITING " <> ruleName <> "\" >> peekToken >>= \\case"
     forM_ grProds genProd
     genEpsFollow
     genErrorCase
@@ -109,7 +109,7 @@ genRule GrammarRule{..} firstS followS = do
         | otherwise = pass
     genErrorCase =
         appLine4 $ "other -> panic $ \"" <> ruleName <>
-        ": encountered unknow symbol: \" <> show other"
+        ": encountered unknown symbol: \" <> show other"
     withNum :: [ProdItem] -> [(ProdItem,Maybe Int)]
     withNum = reverse . fst . foldl withNumFoo ([], 0::Int)
     withNumFoo (curList, i) p@(ProdCode _) = ((p,Nothing):curList, i)

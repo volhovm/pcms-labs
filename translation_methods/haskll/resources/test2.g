@@ -17,18 +17,18 @@ genDecl args mainterm =
 
 }
 
-start: NL? manyFunc func NL? EOF   { putText $ T.intercalate "\n" manyFunc <> "\n" <> func };
+start: NL* func manyFunc NL* EOF { putText $ T.intercalate "\n" manyFunc <> "\n" <> func };
 
 manyFunc returns [[Text] res]
-    : func NL manyFunc            { let res = func : manyFunc }
-    | EPSILON                     { let res = [] }
+    : NL+ func manyFunc { let res = func : manyFunc }
+    | EPSILON           { let res = [] }
     ;
 
 func returns [Text res]
     : NAME DOUBLECOLON functype NL { let fooname = tokenName tokenNAME
                                      let argsnum = functype - 1 }
-      decl[argsnum fooname]
-      decls[argsnum fooname]      { let res = genFunc fooname functype (decl:decls) }
+      decl[argsnum fooname] NL
+      decls[argsnum fooname]       { let res = genFunc fooname functype (decl:decls) }
     ;
 
 functype returns [Int argnum]
@@ -37,8 +37,8 @@ functype returns [Int argnum]
     ;
 
 functypeCont returns [Int argnum]
-    : ARROW functype          { let argnum = functype }
-    | EPSILON                 { let argnum = 0 }
+    : ARROW functype { let argnum = functype }
+    | EPSILON        { let argnum = 0 }
     ;
 
 pureType: PURETYPE | PARENSQL pureType PARENSQR;
@@ -132,4 +132,4 @@ INFIX:           /([\+\-\*\<\>\^\/] | '==' | '/=' | '<=' | '>=')/;
 NAME:            /[a-z][a-zA-Z\'_0-9]*/;
 CHARLIT:         /[\'][a-zA-Z0-9]?[\']/; // test comment
 STRLIT:          /[\"][a-zA-Z0-9]*[\"]/;
-NL:              /[\r\n]+/;
+NL:              /[\r\n]/;

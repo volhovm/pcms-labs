@@ -48,7 +48,7 @@ consumeToken tokenExpected = do
        show tokenExpected <> ", got " <> show t
     consumeContinue t | tokenName t == tokenExpected = do
         sourceString %= drop 1
-        -- traceM $ "Consuming token: " <> tokenExpected
+        putText $ "Consuming token: " <> tokenExpected
         pure t
     consumeContinue t = noMatch t
 
@@ -68,3 +68,6 @@ astToTree (ASTNode t children) =
 readTextUnsafe :: (Read a) => Text -> a
 readTextUnsafe k =
     fromMaybe (panic "readTextUnsafe failed") $ readMaybe $ T.unpack k
+
+traceText :: Text -> a -> a
+traceText = trace
