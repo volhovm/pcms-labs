@@ -5,24 +5,23 @@
 
 module Haskll.Codegen
        ( genParser
+       , kek
        ) where
 
-import           Control.Lens             (ASetter, at, makeLenses, (%=))
+import           Control.Lens             ((%=))
 import           Data.FileEmbed           (embedStringFile, makeRelativeToProject)
-import           Data.List                (delete, nub, (!!))
 import           Data.Map                 ((!))
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 import qualified Data.Text.IO             as TIO
 import           Universum
-import           Unsafe                   (unsafeHead)
 
 import           Haskll.FirstFollow       (FirstSet, FollowSet, setFirstFollow)
 import           Haskll.Grammar           (convertGrammar)
 import           Haskll.Syntax.Expression (GrammarDef (..))
 import           Haskll.Syntax.Parser     (parseGrammar)
-import           Haskll.Types             (GrammarRule (..), ProdItem (..), bindVar,
-                                           pName, prettyGrammarRule, prettyProdItem)
+import           Haskll.Types             (GrammarRule (..), ProdItem (..), pName,
+                                           prettyGrammarRule, prettyProdItem)
 
 ----------------------------------------------------------------------------
 -- Code generation
