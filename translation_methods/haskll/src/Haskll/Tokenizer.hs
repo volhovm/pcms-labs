@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ViewPatterns     #-}
 -- | Break input string into tokens defined by the grammar
 
 module Haskll.Tokenizer
-       ( tokenize
-       , tokenizeT
+       ( tokenizeT
+       , testTokenizer
        ) where
 
 import qualified Data.Text                as T
@@ -17,7 +18,8 @@ import           Haskll.Types             (Token (..))
 
 
 tokenizeT :: [TokenExp] -> Text -> Either Text [Token]
-tokenizeT tokens = tokenize tokens . T.unpack
+tokenizeT tokens (T.unpack -> t) =
+    (++ [Token "EOF" "EOF"]) <$> tokenize tokens t
 
 tokenize :: [TokenExp] -> [Char] -> Either Text [Token]
 tokenize tokenExps input = do
@@ -37,10 +39,11 @@ tokenize tokenExps input = do
                ("" :: [Char]) -> Just (curMatch, after)
                _              -> Nothing
 
-kek  = do
-    t <- TIO.readFile "resources/test3.g"
-    f <- TIO.readFile "resources/arithm.g"
+testTokenizer :: IO ()
+testTokenizer = do
+    t <- TIO.readFile "resources/test2.g"
+    f <- TIO.readFile "resources/functional1.hll"
     let (Right g) = parseGrammar t
-        tokens = either panic identity $ tokenize (gTokens g) (T.unpack f)
+        tokens = either panic identity $ tokenizeT (gTokens g) f
     forM_ (gTokens g) $ print
     forM_ tokens $ \Token{..} -> putText $ tokenName <> ": " <> tokenText

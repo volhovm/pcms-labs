@@ -40,7 +40,7 @@ data Term
     | (:+:) Term
     | (:?:) Term
     | Variable ::=: Term
-    | WithCode Term Code
+    | WithCode Code
     | TermToken Text
     | TermOther Text (Maybe Code)
     | Subterm Term

@@ -1,0 +1,9 @@
+divides :: Int -> Int -> Bool
+divides n m = hole
+
+check :: Int -> Int -> Bool
+check n m = hole
+check k _ = hole
+
+checkSimple :: Int -> Bool
+checkSimple n = hole

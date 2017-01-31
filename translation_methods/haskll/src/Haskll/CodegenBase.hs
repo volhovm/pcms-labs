@@ -9,11 +9,12 @@ import           Control.Lens             (makeLenses, uses, (%=), (^.), _1, _2,
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 import qualified Data.Text.IO             as TIO
-import           Data.Tree                (Tree (..))
+import           Data.Tree                (Tree (..), drawTree)
+import           Data.Tree.Pretty         (drawVerticalTree)
 import           Universum
 
 import           Haskll.Syntax.Expression (TokenExp (..))
-import           Haskll.Tokenizer         (tokenize)
+import           Haskll.Tokenizer         (tokenizeT)
 import           Haskll.Types             (ProdItem (..), Token (..))
 
 data HaskllState = HaskllState
@@ -23,14 +24,16 @@ data HaskllState = HaskllState
 makeLenses ''HaskllState
 
 newtype HParser a = HParser
-    { getHParser :: State HaskllState a
-    } deriving (Functor, Applicative, Monad, MonadState HaskllState)
+    { getHParser :: StateT HaskllState IO a
+    } deriving (Functor, Applicative, Monad, MonadState HaskllState, MonadIO)
 
-evalHParser :: HaskllState -> HParser a -> a
-evalHParser st (HParser action) = evalState action st
+evalHParser :: HaskllState -> HParser a -> IO a
+evalHParser st (HParser action) = evalStateT action st
 
-peekToken :: HParser (Maybe Token)
-peekToken = uses sourceString head
+peekToken :: HParser Token
+peekToken =
+    fromMaybe (panic "tried to peek token, but queue is empty") <$>
+    uses sourceString head
 
 consumeToken :: Text -> HParser Token
 consumeToken tokenExpected = do
@@ -38,15 +41,16 @@ consumeToken tokenExpected = do
     maybe consumeNothing consumeContinue tokenReal
   where
     consumeNothing =
-        panic $ "Tried to consume Nothing -- no more tokens left"
+        panic $ "Tried to consume " <> show tokenExpected <>
+        ", but no more tokens left"
     noMatch t =
        panic $ "Couldn't consume token: expected " <>
-        show tokenExpected <> ", got " <> show t
+       show tokenExpected <> ", got " <> show t
     consumeContinue t | tokenName t == tokenExpected = do
         sourceString %= drop 1
         -- traceM $ "Consuming token: " <> tokenExpected
         pure t
-    consumeContinue t = noMatch $ tokenName t
+    consumeContinue t = noMatch t
 
 data AST
     = ASTNode Text [AST]

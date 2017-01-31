@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE ViewPatterns     #-}
+
 -- | First/Follow sets generation
 
 module Haskll.FirstFollow
@@ -9,10 +11,11 @@ module Haskll.FirstFollow
        , setFollow
        , setFirstFollow
        , testFirstFollow
+       , checkLL1
        ) where
 
 import           Control.Lens             (ASetter, at, makeLenses, (%=))
-import           Data.List                (delete, nub, (!!))
+import           Data.List                (delete, intersect, nub, (!!))
 import           Data.Map                 ((!))
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
@@ -23,8 +26,9 @@ import           Unsafe                   (unsafeHead)
 import           Haskll.Grammar           (convertGrammar)
 import           Haskll.Syntax.Expression (gExprs)
 import           Haskll.Syntax.Parser     (parseGrammar)
-import           Haskll.Types             (GrammarRule (..), ProdItem (..), grProds,
-                                           pName, prettyProdItem)
+import           Haskll.Types             (GrammarRule (..), ProdItem (..),
+                                           filterProdCode, grProds, notCode, pName,
+                                           prettyProdItem)
 
 type FirstSet = Map Text [ProdItem]
 type FollowSet = Map Text [Maybe ProdItem]
@@ -45,14 +49,9 @@ forFiltered predicate action = do
     forM_ (filter predicate $ M.keys inner) $ \k ->
         mapw . at k %= fmap (nub . action)
 
-notCode :: ProdItem -> Bool
-notCode (ProdCode _) = False
-notCode _            = True
-
 setFirst :: [GrammarRule] -> FirstSet
-setFirst rules0 = _mapw $ execState loop initState
+setFirst (map filterProdCode -> rules) = _mapw $ execState loop initState
   where
-    rules = map (\x -> x { grProds = grProds x & traverse %~ filter notCode }) rules0
     initState = MapWrap $ M.fromList $ map (\x -> (grName x,[])) rules
     loop :: (MonadState (MapWrap Text [ProdItem]) m) => m ()
     loop = do
@@ -69,9 +68,9 @@ setFirst rules0 = _mapw $ execState loop initState
 
 -- head should be starting terminal
 setFirstFollow :: [GrammarRule] -> (FirstSet, FollowSet)
-setFirstFollow rules0 = (sfirst, _mapw $ execState loop initState)
+setFirstFollow (map filterProdCode -> rules) =
+    (sfirst, _mapw $ execState loop initState)
   where
-    rules = map (\x -> x { grProds = grProds x & traverse %~ filter notCode }) rules0
     sfirst = setFirst rules
     splitItems :: [a] -> [([a],a,[a])]
     splitItems items =
@@ -108,7 +107,7 @@ setFollow = snd . setFirstFollow
 
 testFirstFollow :: IO ()
 testFirstFollow  = do
-    (Right g) <- parseGrammar <$> TIO.readFile "resources/test4.g"
+    (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
     let expressions = convertGrammar $ gExprs g
     forM_ (M.assocs $ setFirst expressions) $ \(text,items) ->
         putStrLn $ text <> " -> \"" <> T.intercalate "\", \"" (map prettyProdItem items) <> "\""
@@ -116,3 +115,27 @@ testFirstFollow  = do
     forM_ (M.assocs $ setFollow expressions) $ \(gr,items) -> do
         let realItems = map (maybe "$" prettyProdItem) items
         putStrLn $ gr <> " -> \"" <> T.intercalate "\", \"" realItems <> "\""
+
+-- Returns broken rule A if sees that first(a) = first(b), where A ->
+-- ax, A -> by.
+checkLL1 :: [GrammarRule] -> [(GrammarRule, [ProdItem], [ProdItem])]
+checkLL1 rules = concat rulesChecked
+  where
+    firstS = setFirst rules
+    pairs []     = []
+    pairs (x:xs) = map (x,) xs ++ pairs xs
+    withPName = filter (not . T.null) . map (view pName)
+    getFirst :: ProdItem -> [Text]
+    getFirst (ProdNonterminal pname _ _) = withPName $ firstS ! pname
+    getFirst (ProdTerminal pname _)      = [pname]
+    getFirst _                           = []
+    noCode = filter notCode
+    prodsCompatible :: [ProdItem] -> [ProdItem] -> Bool
+    prodsCompatible (noCode -> (a:_)) (noCode -> (b:_)) =
+        null $ getFirst a `intersect` getFirst b
+    prodsCompatible _ _ = panic "prodsCompatible"
+    checkRule :: GrammarRule -> [[ProdItem]] -> [(GrammarRule, [ProdItem], [ProdItem])]
+    checkRule g prods =
+        map (\(a,b) -> (g,a,b)) $
+        filter (not . uncurry prodsCompatible) (pairs prods)
+    rulesChecked = map (\g@GrammarRule{..} -> checkRule g grProds) rules

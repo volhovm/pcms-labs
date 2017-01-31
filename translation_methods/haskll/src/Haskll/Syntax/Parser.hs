@@ -31,7 +31,7 @@ post :: (Monad m) => m a -> m b -> m a
 post f b = f >>= \a -> b $> a
 
 spaceCmt :: Parser ()
-spaceCmt = space >> void (optional $ comment >> space)
+spaceCmt = space >> void (optional $ comment >> spaceCmt)
   where
     comment = string "//" >> many (satisfy (/= '\n')) >> newline
 
@@ -81,7 +81,8 @@ wordConstructor =
 
 grammarDef :: Parser GrammarDef
 grammarDef = do
-    gName <- lexem (string "grammar") >> (wordConstructor `post` (string ";"))
+    gName <- lexem $ (string "grammar") >>
+             lexem (wordConstructor `post` (string ";"))
     gImports <- optional $ try $ lexem (string "@imports") >> lexem (betweenMatching '{' '}')
     gMembers <- optional $ try $ lexem (string "@members") >> lexem (betweenMatching '{' '}')
     gExprs <- many expression
@@ -116,18 +117,15 @@ term :: Parser Term
 term = termAlt
   where
     termAlt =
-        foldr1 (:|:) <$> lexem (lexem (withCode <|> termAnd) `sepBy1` string "|")
-    withCode = try $ do
-        predTerm <- lexem termAnd
-        codePart <- betweenMatching '{' '}'
-        pure $ WithCode predTerm codePart
+        foldr1 (:|:) <$> lexem (lexem termAnd `sepBy1` string "|")
     termAnd = foldr1 (:&:) <$> some (try $ lexem $ assoc1)
     assoc1 =
         choice $ map lexem $
-        [withVar, postModifier, assoc0]
+        [withVar, postModifier,  assoc0]
     assoc0 =
         choice $ map lexem $
-        [termToken, subterm, termOther]
+        [termToken, subterm, withCode, termOther]
+    withCode = try $ WithCode <$> betweenMatching '{' '}'
     withVar = try $ do
         varName <- wordCamel
         binding <-

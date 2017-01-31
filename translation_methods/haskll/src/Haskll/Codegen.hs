@@ -16,12 +16,12 @@ import qualified Data.Text                as T
 import qualified Data.Text.IO             as TIO
 import           Universum
 
-import           Haskll.FirstFollow       (FirstSet, FollowSet, setFirstFollow)
+import           Haskll.FirstFollow       (FirstSet, FollowSet, checkLL1, setFirstFollow)
 import           Haskll.Grammar           (convertGrammar)
 import           Haskll.Syntax.Expression (GrammarDef (..))
 import           Haskll.Syntax.Parser     (parseGrammar)
-import           Haskll.Types             (GrammarRule (..), ProdItem (..), pName,
-                                           prettyGrammarRule, prettyProdItem)
+import           Haskll.Types             (GrammarRule (..), ProdItem (..), notCode,
+                                           pName, prettyGrammarRule, prettyProdItem)
 
 ----------------------------------------------------------------------------
 -- Code generation
@@ -65,8 +65,8 @@ genRule GrammarRule{..} firstS followS = do
         (T.concat $ map (<> " -> ") extraArgTypes) <>
         "HParser (AST, " <> extraRetArgTypes <> ")"
     let extraArgNames = map snd grReceivingAttrs
-    appLine $ ruleName <> " " <> (T.intercalate " " extraArgNames) <>
-        " = peekToken >>= \\case"
+    appLine $ ruleName <> " " <> (T.concat $ map (<>" ") extraArgNames) <>
+        "= peekToken >>= \\case"
     forM_ grProds genProd
     genEpsFollow
     genErrorCase
@@ -78,13 +78,13 @@ genRule GrammarRule{..} firstS followS = do
         "[" <> T.intercalate "," (map (\e -> "\"" <> e ^. pName <> "\"") l) <> "]"
     genProd t@(x:_) = case x of
         (ProdTerminal pn _) -> do
-            appLine4 $ "Just matchToken | tokenName matchToken == \"" <> pn <> "\" -> do"
+            appLine4 $ "matchToken | tokenName matchToken == \"" <> pn <> "\" -> do"
             genConsume t
         (ProdNonterminal pn _ _)
             | not . null . filter (/= ProdEpsilon) $ firstS ! pn -> do
                 let firstCur = filter (/= ProdEpsilon) $ firstS ! pn
                 appLine4 $
-                    "Just matchToken | tokenName matchToken `elem` " <>
+                    "matchToken | tokenName matchToken `elem` " <>
                     formList firstCur <> " -> do"
                 genConsume t
         _ -> pass
@@ -97,16 +97,14 @@ genRule GrammarRule{..} firstS followS = do
         find (\(x:_) -> isEpsGenerating x) grProds
     genEpsFollow
         | ProdEpsilon `elem` (firstS ! grName) = do
-            let followCur = followS ! grName
-                followNothing = any isNothing followCur
-                followJust = any isJust followCur
-            when followJust $ do
+            let followCur = case filter notCode getEpsRule of
+                    ((ProdNonterminal name _ _):_) -> followS ! name
+                    [ProdEpsilon]                  -> followS ! grName
+                    _                              -> panic "genEpsFollow: not possible"
+            when (any isJust followCur) $ do
                 appLine4 $
-                    "Just matchToken | tokenName matchToken `elem` " <>
+                    "matchToken | tokenName matchToken `elem` " <>
                     formList (catMaybes followCur) <> " -> do"
-                genConsume getEpsRule
-            when followNothing $ do
-                appLine $ "    Nothing -> do"
                 genConsume getEpsRule
         | otherwise = pass
     genErrorCase =
@@ -125,7 +123,7 @@ genRule GrammarRule{..} firstS followS = do
                 T.intercalate ","
                 (map (\i -> "retNode" <> show i) [0..totalNumbers - 1]) <> "]"
             retVars = T.intercalate "," $ map snd grGeneratingAttrs
-        appLine8 $ "pure $ (" <> astNode <> ", (" <> retVars <> "))"
+        appLine8 $ "pure (" <> astNode <> ", (" <> retVars <> "))"
     consumeItem :: ProdItem -> Maybe Int -> TextT ()
     consumeItem (ProdTerminal pn _) (Just ix) = do
         let smallPn = "token" <> pn
@@ -151,6 +149,13 @@ genParser g = snd $ flip runState "" $ do
 
     -- Grammar
     let grammarRules = convertGrammar $ gExprs g
+    when (not $ null $ checkLL1 grammarRules) $ do
+        let showProdList = T.intercalate " " . map prettyProdItem
+            showTriple (g',a,b) =
+                grName g' <> " -> " <> showProdList a <> " |CONFLICTS WITH| " <> showProdList b
+        panic $ "Grammar is not LL1: check these terms: " <>
+            T.intercalate "\n" (map showTriple $ checkLL1 grammarRules)
+
     appComment "Grammar"
     appFullComment $ T.intercalate "\n" $ map prettyGrammarRule grammarRules
 
@@ -182,13 +187,15 @@ genParser g = snd $ flip runState "" $ do
 
     -- Bootstrapping
     appComment "Bootstrapping"
-    appText $ "execParser :: FilePath -> IO AST\n\
-              \execParser fp = do\n\
+    appText $ "execParser :: Bool -> FilePath -> IO AST\n\
+              \execParser isVert fp = do\n\
               \    contents <- TIO.readFile fp\n\
               \    let tokens =\n\
               \            either (panic \"Couldn't tokenize\") identity $\n\
-              \            tokenize tokensGen (T.unpack contents)\n\
-              \    let (ast,res) = evalHParser (HaskllState tokens) parsestart\n\
+              \            tokenizeT tokensGen contents\n\
+              \    (ast,res) <- evalHParser (HaskllState tokens) parsestart\n\
+              \    let printMethod = bool drawTree drawVerticalTree isVert\n\
+              \    putStrLn $ printMethod $ astToTree ast\n\
               \    print res\n\
               \    pure ast\n"
 
@@ -199,7 +206,7 @@ genParser g = snd $ flip runState "" $ do
 
 kek :: IO ()
 kek  = do
-    g <- parseGrammar <$> TIO.readFile "resources/test4.g"
+    g <- parseGrammar <$> TIO.readFile "resources/test2.g"
     TIO.writeFile "src/Haskll/Test.hs" $ genParser $ either onLeft identity g
   where
     onLeft x = panic $ "Could not parse: " <> x

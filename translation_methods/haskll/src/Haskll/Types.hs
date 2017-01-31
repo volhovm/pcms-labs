@@ -7,8 +7,10 @@ module Haskll.Types
        , pName
        , pArgs
        , bindVar
+       , notCode
        , prettyProdItem
        , GrammarRule (..)
+       , filterProdCode
        , prettyGrammarRule
        , Token (..)
        ) where
@@ -34,6 +36,7 @@ data ProdItem
 
 makeLenses ''ProdItem
 
+
 prettyProdItem :: ProdItem -> Text
 prettyProdItem ProdEpsilon          = "ε"
 prettyProdItem (ProdCode _)         = "<code>"
@@ -48,6 +51,14 @@ data GrammarRule = GrammarRule
     , grGeneratingAttrs :: Attributes
     , grLocals          :: Attributes
     } deriving (Show,Eq,Ord)
+
+notCode :: ProdItem -> Bool
+notCode (ProdCode _) = False
+notCode _            = True
+
+filterProdCode :: GrammarRule -> GrammarRule
+filterProdCode x =
+    x { grProds = grProds x & traverse %~ filter notCode }
 
 prettyGrammarRule :: GrammarRule -> Text
 prettyGrammarRule GrammarRule{..} =

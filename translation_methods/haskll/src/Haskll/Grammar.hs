@@ -72,10 +72,9 @@ nonTermGenCombinator t comb =
         pure $ nontermEmpty genName
 
 collectItems :: Term -> GrammarT [ProdItem]
-collectItems (t1 :&: t2)       = (++) <$> collectItems t1 <*> collectItems t2
-collectItems (WithCode t code) = (++ [ProdCode code]) <$> collectItems t
-collectItems (Subterm t)       = collectItems t
-collectItems t                 = one <$> collectItem t
+collectItems (t1 :&: t2) = (++) <$> collectItems t1 <*> collectItems t2
+collectItems (Subterm t) = collectItems t
+collectItems t           = one <$> collectItem t
 
 nonTermGen :: Term -> GrammarT ProdItem
 nonTermGen t = do
@@ -87,10 +86,10 @@ collectItem TermEpsilon       = pure ProdEpsilon
 collectItem (Subterm t)       = collectItem t
 collectItem (TermToken tName) = pure $ ProdTerminal tName Nothing
 collectItem (TermOther t mc)  = pure $ ProdNonterminal t mc Nothing
+collectItem (WithCode c)      = pure $ ProdCode c
 collectItem t@(_ :&: _)       = panic $ "collectItem: encountered :&: " <> show t
 collectItem (v ::=: t)        = collectItem t <&> bindVar .~ Just v
 collectItem t@(_ :|: _)       = nonTermGen t
-collectItem t@(WithCode _ _)  = nonTermGen t
 collectItem ((:*:) t)         = nonTermGenCombinator t CMany
 collectItem ((:+:) t)         = nonTermGenCombinator t CSome
 collectItem ((:?:) t)         = nonTermGenCombinator t COpt
