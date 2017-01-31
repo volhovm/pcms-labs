@@ -1,9 +1,11 @@
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE TemplateHaskell  #-}
 
 module Haskll.CodegenBase where
 
-import           Control.Lens             (makeLenses, uses, (%=), (^.))
+import           Control.Lens             (makeLenses, uses, (%=), (^.), _1, _2, _3, _4,
+                                           _5)
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 import qualified Data.Text.IO             as TIO
@@ -30,23 +32,35 @@ evalHParser st (HParser action) = evalState action st
 peekToken :: HParser (Maybe Token)
 peekToken = uses sourceString head
 
-consumeToken :: Text -> HParser AST
+consumeToken :: Text -> HParser Token
 consumeToken tokenExpected = do
     tokenReal <- uses sourceString head
-    if fmap tokenName tokenReal == Just tokenExpected
-    then do
+    maybe consumeNothing consumeContinue tokenReal
+  where
+    consumeNothing =
+        panic $ "Tried to consume Nothing -- no more tokens left"
+    noMatch t =
+       panic $ "Couldn't consume token: expected " <>
+        show tokenExpected <> ", got " <> show t
+    consumeContinue t | tokenName t == tokenExpected = do
         sourceString %= drop 1
         -- traceM $ "Consuming token: " <> tokenExpected
-        pure $ maybe ASTLeafEps ASTLeaf tokenReal
-    else panic $ "Couldn't consume token " <> show tokenExpected
+        pure t
+    consumeContinue t = noMatch $ tokenName t
 
 data AST
     = ASTNode Text [AST]
     | ASTLeaf Token
-    | ASTLeafEps
     deriving (Eq, Ord, Show)
 
 astToTree :: AST -> Tree String
-astToTree ASTLeafEps           = Node "ε" []
 astToTree (ASTLeaf t)          = Node (T.unpack $ tokenText t) []
-astToTree (ASTNode t children) = Node (T.unpack t) $ map astToTree children
+astToTree (ASTNode t children) =
+    Node (T.unpack t) $
+    case map astToTree children of
+        [] -> [Node "ε" []]
+        x  -> x
+
+readTextUnsafe :: (Read a) => Text -> a
+readTextUnsafe k =
+    fromMaybe (panic "readTextUnsafe failed") $ readMaybe $ T.unpack k

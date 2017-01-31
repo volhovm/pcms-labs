@@ -43,7 +43,7 @@ appComment t = do
     let lline = T.pack (replicate 76 '-')
     appNL >> appLine lline
     appLine $ "-- " <> t
-    appLine lline >> appNL
+    appLine lline
 appFullComment t = appLine "\n{-" >> appLine t >> appLine "-}\n"
 appLineIndent :: Int -> Text -> TextT ()
 appLineIndent n t = appText (T.replicate n " ") >> appText t >> appText "\n"
@@ -57,65 +57,100 @@ appTerm pre mname mtype mmap = do
 appList :: (Show a) => Text -> Text -> [a] -> TextT ()
 appList = appTerm identity
 
+
 genRule :: GrammarRule -> FirstSet -> FollowSet -> TextT ()
 genRule GrammarRule{..} firstS followS = do
-    appLine $ ruleName <> " :: HParser AST"
-    appLine $ ruleName <> " = peekToken >>= \\case"
+    let extraArgTypes = map fst grReceivingAttrs
+    let extraRetArgTypes = "(" <> T.intercalate "," (map fst grGeneratingAttrs) <> ")"
+    appLine $ ruleName <> " :: " <>
+        (T.concat $ map (<> " -> ") extraArgTypes) <>
+        "HParser (AST, " <> extraRetArgTypes <> ")"
+    let extraArgNames = map snd grReceivingAttrs
+    appLine $ ruleName <> " " <> (T.intercalate " " extraArgNames) <>
+        " = peekToken >>= \\case"
     forM_ grProds genProd
     genEpsFollow
     genErrorCase
   where
     ruleName = "parse"<>grName
-    formList l = "[" <> T.intercalate "," (map (\e -> "\"" <> e ^. pName <> "\"") l) <> "]"
+    appLine4 = appLineIndent 4
+    appLine8 = appLineIndent 8
+    formList l =
+        "[" <> T.intercalate "," (map (\e -> "\"" <> e ^. pName <> "\"") l) <> "]"
     genProd t@(x:_) = case x of
         (ProdTerminal pn _) -> do
-            appLine $ "    Just Token{..} | tokenName == \"" <> pn <> "\" -> do"
+            appLine4 $ "Just matchToken | tokenName matchToken == \"" <> pn <> "\" -> do"
             genConsume t
         (ProdNonterminal pn _ _)
             | not . null . filter (/= ProdEpsilon) $ firstS ! pn -> do
                 let firstCur = filter (/= ProdEpsilon) $ firstS ! pn
-                appLine $
-                    "    Just Token{..} | tokenName `elem` " <>
+                appLine4 $
+                    "Just matchToken | tokenName matchToken `elem` " <>
                     formList firstCur <> " -> do"
                 genConsume t
         _ -> pass
     genProd _ = panic "genRule#genProd empty list impossible"
+    isEpsGenerating ProdEpsilon = True
+    isEpsGenerating (ProdNonterminal name _ _) =
+        fromMaybe False $ (ProdEpsilon `elem`) <$> M.lookup name firstS
+    isEpsGenerating _ = False
+    getEpsRule = fromMaybe (panic "The grammar is not LL1!") $
+        find (\(x:_) -> isEpsGenerating x) grProds
     genEpsFollow
         | ProdEpsilon `elem` (firstS ! grName) = do
             let followCur = followS ! grName
                 followNothing = any isNothing followCur
                 followJust = any isJust followCur
-                retVal = "pure $ ASTNode \"" <> grName <> "\" [ ASTLeafEps ]"
             when followJust $ do
-                appLine $
-                    "    Just Token{..} | tokenName `elem` " <>
-                    formList (catMaybes followCur) <> " -> " <> retVal
-            when followNothing $ appLine $ "    Nothing -> " <> retVal
+                appLine4 $
+                    "Just matchToken | tokenName matchToken `elem` " <>
+                    formList (catMaybes followCur) <> " -> do"
+                genConsume getEpsRule
+            when followNothing $ do
+                appLine $ "    Nothing -> do"
+                genConsume getEpsRule
         | otherwise = pass
-    appLine8 = appLineIndent 8
     genErrorCase =
-        appLine $ "    other -> panic $ \"" <> ruleName <>
+        appLine4 $ "other -> panic $ \"" <> ruleName <>
         ": encountered unknow symbol: \" <> show other"
+    withNum :: [ProdItem] -> [(ProdItem,Maybe Int)]
+    withNum = reverse . fst . foldl withNumFoo ([], 0::Int)
+    withNumFoo (curList, i) p@(ProdCode _) = ((p,Nothing):curList, i)
+    withNumFoo (curList, i) p@ProdEpsilon  = ((p,Nothing):curList, i)
+    withNumFoo (curList, i) p              = ((p, Just i):curList, i+1)
     genConsume items = do
-        forM_ (items `zip` [0..]) $ uncurry consumeItem
-        appLine8 $ "pure $ ASTNode \"" <> grName <> "\" [" <>
-            T.intercalate "," (map (\i -> "retNode"<> show i) [0..length items - 1]) <> "]"
-    consumeItem :: ProdItem -> Int -> TextT ()
-    consumeItem (ProdTerminal pn _) ix = do
-        appLine8 $ "retNode" <> show ix <> " <- consumeToken \"" <> pn <> "\""
-    consumeItem (ProdNonterminal pn _ _) ix = do
-        appLine8 $ "retNode" <> show ix <> " <- parse"<> pn
+        let itemsNumbered = withNum items
+            totalNumbers = length $ catMaybes $ map snd itemsNumbered
+        forM_ itemsNumbered $ uncurry consumeItem
+        let astNode = "ASTNode \"" <> grName <> "\" [" <>
+                T.intercalate ","
+                (map (\i -> "retNode" <> show i) [0..totalNumbers - 1]) <> "]"
+            retVars = T.intercalate "," $ map snd grGeneratingAttrs
+        appLine8 $ "pure $ (" <> astNode <> ", (" <> retVars <> "))"
+    consumeItem :: ProdItem -> Maybe Int -> TextT ()
+    consumeItem (ProdTerminal pn _) (Just ix) = do
+        let smallPn = "token" <> pn
+        appLine8 $ smallPn <> " <- consumeToken \"" <> pn <> "\""
+        appLine8 $ "let retNode" <> show ix <> " = ASTLeaf " <> smallPn
+    consumeItem (ProdNonterminal pn _ var) (Just ix) = do
+        let varName = fromMaybe pn var
+        appLine8 $ "(retNode" <> show ix <> ", " <> varName <> ") <- parse"<> pn
+    consumeItem (ProdCode code) _  = forM_ (map T.strip $ T.lines code) appLine8
     consumeItem _ _                    = pass
 
 
 genParser :: GrammarDef -> Text
 genParser g = snd $ flip runState "" $ do
-    appText $ T.unlines $ take 4 $ T.lines codegenBase
+    -- Imports and base
+    appText $ T.unlines $ takeWhile (not . T.isPrefixOf "import") $ T.lines codegenBase
     whenJust (gImports g) appLine
-    appText $ T.unlines $ drop 4 $ T.lines codegenBase
+    appText $ T.unlines $ dropWhile (not . T.isPrefixOf "import") $ T.lines codegenBase
 
+    -- Members
+    whenJust (gMembers g) $ \x -> appComment "Members" >> appLine x
+
+    -- Grammar
     let grammarRules = convertGrammar $ gExprs g
-
     appComment "Grammar"
     appFullComment $ T.intercalate "\n" $ map prettyGrammarRule grammarRules
 
@@ -153,7 +188,9 @@ genParser g = snd $ flip runState "" $ do
               \    let tokens =\n\
               \            either (panic \"Couldn't tokenize\") identity $\n\
               \            tokenize tokensGen (T.unpack contents)\n\
-              \    pure $ evalHParser (HaskllState tokens) parsestart\n"
+              \    let (ast,res) = evalHParser (HaskllState tokens) parsestart\n\
+              \    print res\n\
+              \    pure ast\n"
 
 ----------------------------------------------------------------------------
 -- Trash
@@ -162,5 +199,5 @@ genParser g = snd $ flip runState "" $ do
 
 kek :: IO ()
 kek  = do
-    (Right g) <- parseGrammar <$> TIO.readFile "resources/test3.g"
+    (Right g) <- parseGrammar <$> TIO.readFile "resources/test4.g"
     TIO.writeFile "src/Haskll/Test.hs" $ genParser g

@@ -23,8 +23,8 @@ import           Unsafe                   (unsafeHead)
 import           Haskll.Grammar           (convertGrammar)
 import           Haskll.Syntax.Expression (gExprs)
 import           Haskll.Syntax.Parser     (parseGrammar)
-import           Haskll.Types             (GrammarRule (..), ProdItem (..), pName,
-                                           prettyProdItem)
+import           Haskll.Types             (GrammarRule (..), ProdItem (..), grProds,
+                                           pName, prettyProdItem)
 
 type FirstSet = Map Text [ProdItem]
 type FollowSet = Map Text [Maybe ProdItem]
@@ -45,9 +45,14 @@ forFiltered predicate action = do
     forM_ (filter predicate $ M.keys inner) $ \k ->
         mapw . at k %= fmap (nub . action)
 
+notCode :: ProdItem -> Bool
+notCode (ProdCode _) = False
+notCode _            = True
+
 setFirst :: [GrammarRule] -> FirstSet
-setFirst rules = _mapw $ execState loop initState
+setFirst rules0 = _mapw $ execState loop initState
   where
+    rules = map (\x -> x { grProds = grProds x & traverse %~ filter notCode }) rules0
     initState = MapWrap $ M.fromList $ map (\x -> (grName x,[])) rules
     loop :: (MonadState (MapWrap Text [ProdItem]) m) => m ()
     loop = do
@@ -64,8 +69,9 @@ setFirst rules = _mapw $ execState loop initState
 
 -- head should be starting terminal
 setFirstFollow :: [GrammarRule] -> (FirstSet, FollowSet)
-setFirstFollow rules = (sfirst, _mapw $ execState loop initState)
+setFirstFollow rules0 = (sfirst, _mapw $ execState loop initState)
   where
+    rules = map (\x -> x { grProds = grProds x & traverse %~ filter notCode }) rules0
     sfirst = setFirst rules
     splitItems :: [a] -> [([a],a,[a])]
     splitItems items =
@@ -102,7 +108,7 @@ setFollow = snd . setFirstFollow
 
 testFirstFollow :: IO ()
 testFirstFollow  = do
-    (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
+    (Right g) <- parseGrammar <$> TIO.readFile "resources/test4.g"
     let expressions = convertGrammar $ gExprs g
     forM_ (M.assocs $ setFirst expressions) $ \(text,items) ->
         putStrLn $ text <> " -> \"" <> T.intercalate "\", \"" (map prettyProdItem items) <> "\""
