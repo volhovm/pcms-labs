@@ -8,11 +8,15 @@ genFunc fooname argSize decls =
     T.intercalate ", " (map (\i -> "_" <> show i) [0 .. argSize - 1]) <>
     "):\n" <> T.intercalate "\n" decls
 
-genDecl :: [Text] -> Text -> Text
-genDecl args mainterm =
-    T.concat (map (<>"\n") bindings) <>
-    T.intercalate "\n" (map ("  "<>) $ T.lines mainterm)
+genDecl :: [Text] -> Text -> Text -> Text
+genDecl args grd mainterm =
+    bindingsNL <>
+    if T.null grd
+    then T.intercalate "\n" (map ("  "<>) $ T.lines mainterm)
+    else "  if " <> grd <> ":\n" <>
+         T.intercalate "\n" (map ("    "<>) $ T.lines mainterm)
   where
+    bindingsNL = T.concat (map (<>"\n") bindings)
     bindings = map (\(a,i) -> "  def " <> a <> "(): return _" <> show i) $
                args `zip` [0..length args - 1]
 
@@ -70,10 +74,15 @@ args returns [[Text] res]
     ;
 
 decl[Int argnum, Text fooname] returns [Text res]
-    : NAME args EQUALS NL? retterm
+    : NAME args guard EQUALS NL? retterm
     { when (length args /= argnum) $ panic $ "decl: number of args in type " <> show argnum <> " doesn't match number of args in decl " <> show (length args)
       when (tokenText tokenNAME /= fooname) $ panic "decl: fooname doesn't match"
-      let res = genDecl args (fst retterm) }
+      let res = genDecl args guard (fst retterm) }
+    ;
+
+guard returns [Text res]
+    : VERTBAR retterm { let res = fst retterm }
+    | EPSILON         { let res = "" }
     ;
 
 retterm returns [Text res, Bool ret]

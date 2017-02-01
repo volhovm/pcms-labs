@@ -2,6 +2,7 @@ divides :: Int -> Int -> Bool
 divides n m = n `mod` m == 0
 
 convertString :: String -> String
+convertString c | c == "k" = "aoeusnth"
 convertString _   = "<error>"
 
 checkSimple :: Int -> Bool
