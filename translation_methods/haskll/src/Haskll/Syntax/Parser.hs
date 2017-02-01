@@ -58,6 +58,12 @@ betweenMatching l r =
 optList :: Parser [a] -> Parser [a]
 optList p = fromMaybe [] <$> optional p
 
+between' :: Text -> Text -> Parser a -> Parser a
+between' a b c = between (string $ T.unpack a) (string $ T.unpack b) c
+
+surround :: Text -> Text -> Text -> Text
+surround a b c = a <> c <> b
+
 -- kek,tst :: Parser String
 -- kek = string "kek"
 -- tst = try $ kek `post` string "*"
@@ -76,8 +82,11 @@ wordUpper, wordCamel, wordConstructor :: Parser Text
 wordUpper = startWith isUpper (isUpper |^| isDigit)
 wordCamel = startWith isLower isAlphaNum
 wordConstructor =
-    startWith (isUpper |^| (`elem` ("[]"::[Char])))
-              (isAlphaNum |^| (`elem` ("[]."::[Char])))
+    try (startWith (isUpper) (isAlphaNum |^| (== '.'))) <|>
+    try (surround "(" ")" <$>
+         between' "(" ")"
+         (T.intercalate "," <$> (wordConstructor `sepBy` lexem (string ",")))) <|>
+    try (surround "[" "]" <$> between' "[" "]" wordConstructor)
 
 grammarDef :: Parser GrammarDef
 grammarDef = do
@@ -108,7 +117,7 @@ expression = do
         pure $ (paramType,paramName)
     paramList :: Parser [(Text,Text)]
     paramList =
-        between (string "[") (string "]") $
+        between' "[" "]" $
         lexem $ (lexem paramArg) `sepBy1` string ","
     receiveParams = paramList
     genParams = string "returns" >> spaceCmt >> paramList
@@ -141,7 +150,7 @@ term = termAlt
         otherName <- try wordCamel
         callParams <- optional (betweenMatching '[' ']')
         pure $ TermOther otherName callParams
-    parens = between (string "(") (string ")") (lexem term)
+    parens = between' "(" ")" (lexem term)
     subterm = Subterm <$> parens
     postModifier = try $ do
         subt <- assoc0

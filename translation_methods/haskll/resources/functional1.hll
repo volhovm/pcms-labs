@@ -1,9 +1,18 @@
 divides :: Int -> Int -> Bool
-divides n m = hole
+divides n m = n `mod` m == 0
 
-check :: Int -> Int -> Bool
-check n m = hole
-check k _ = hole
+convertString :: String -> String
+convertString _   = "<error>"
 
 checkSimple :: Int -> Bool
-checkSimple n = hole
+checkSimple n =
+   let square :: Int
+       square = n * n
+   in square / n == n
+
+
+convertString2 :: String -> String
+convertString2 _   = "<error>"
+
+convertString3 :: String -> String
+convertString3 _   = "<error>"

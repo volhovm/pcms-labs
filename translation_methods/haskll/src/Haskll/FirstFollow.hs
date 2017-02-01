@@ -16,7 +16,6 @@ module Haskll.FirstFollow
 
 import           Control.Lens             (ASetter, at, makeLenses, (%=))
 import           Data.List                (delete, intersect, nub, (!!))
-import           Data.Map                 ((!))
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 import qualified Data.Text.IO             as TIO
@@ -41,6 +40,9 @@ makeLenses ''MapWrap
     => ASetter s s (f a) (f [b]) -> (a -> [b]) -> m ()
 (<>%=) a b = a %= fmap (nub . b)
 infixr 8 <>%=
+
+(!) :: (Ord k,Show k) => Map k v -> k -> v
+(!) m k = fromMaybe (panic $ "Key " <> show k <> " is not in map") $ M.lookup k m
 
 forFiltered :: (Ord a, Eq b, MonadState (MapWrap a [b]) m) =>
               (a -> Bool) -> ([b] -> [b]) -> m ()
@@ -107,6 +109,7 @@ setFollow = snd . setFirstFollow
 testFirstFollow :: IO ()
 testFirstFollow  = do
     (Right g) <- parseGrammar <$> TIO.readFile "resources/test2.g"
+    putText "Parsed"
     let expressions = convertGrammar $ gExprs g
     forM_ (M.assocs $ setFirst expressions) $ \(text,items) ->
         putStrLn $ text <> " -> \"" <> T.intercalate "\", \"" (map prettyProdItem items) <> "\""

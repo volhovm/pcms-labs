@@ -24,7 +24,7 @@ tokenizeT tokens (T.unpack -> t) =
 tokenize :: [TokenExp] -> [Char] -> Either Text [Token]
 tokenize tokenExps input = do
     (t,(match,after)) <- case curTokenExp of
-        Nothing -> Left $ "Can't tokenize starting on: " <> T.pack (take 20 input)
+        Nothing -> Left $ "Can't tokenize starting on: \"" <> T.pack (take 20 input) <> "\""
         Just x  -> Right x
     next <- if null after then Right [] else tokenize tokenExps after
     pure $ if tSkip t

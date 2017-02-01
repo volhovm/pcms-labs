@@ -48,7 +48,7 @@ consumeToken tokenExpected = do
        show tokenExpected <> ", got " <> show t
     consumeContinue t | tokenName t == tokenExpected = do
         sourceString %= drop 1
-        --putText $ "Consuming token: " <> tokenExpected
+        putText $ "Consuming token: " <> show t
         pure t
     consumeContinue t = noMatch t
 

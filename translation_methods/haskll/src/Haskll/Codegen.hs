@@ -65,8 +65,8 @@ genRule GrammarRule{..} firstS followS = do
         (T.concat $ map (<> " -> ") extraArgTypes) <>
         "HParser (AST, " <> extraRetArgTypes <> ")"
     let extraArgNames = map snd grReceivingAttrs
-        -- debug = "putText \"VISITING " <> ruleName <> "\" >>"
-        debug = ""
+        debug = "putText \"VISITING " <> ruleName <> "\" >>"
+        --debug = ""
     appLine $ ruleName <> " " <> (T.concat $ map (<>" ") extraArgNames) <>
         "= " <> debug <> " peekToken >>= \\case"
     forM_ grProds genProd
@@ -189,7 +189,7 @@ genParser g = snd $ flip runState "" $ do
 
     -- Bootstrapping
     appComment "Bootstrapping"
-    appText $ "execParser :: Bool -> FilePath -> IO AST\n\
+    appText $ "execParser :: Bool -> FilePath -> IO ()\n\
               \execParser isVert fp = do\n\
               \    contents <- TIO.readFile fp\n\
               \    let tokens =\n\
@@ -198,8 +198,7 @@ genParser g = snd $ flip runState "" $ do
               \    (ast,res) <- evalHParser (HaskllState tokens) parsestart\n\
               \    let printMethod = bool drawTree drawVerticalTree isVert\n\
               \    putStrLn $ printMethod $ astToTree ast\n\
-              \    print res\n\
-              \    pure ast\n"
+              \    putText res\n"
 
 ----------------------------------------------------------------------------
 -- Trash
