@@ -22,20 +22,21 @@ genDecl args grd mainterm =
 
 convertInfix :: Text -> Text -> Text -> Text
 convertInfix "/=" a b    = a <> " != " <> b
-convertInfix "`div`" a b = a <> " / " <> b
+convertInfix "`div`" a b = a <> " // " <> b
 convertInfix "`mod`" a b = a <> " % " <> b
 convertInfix pseudo a b
-    | "`" `T.isPrefixOf` pseudo = pseudo <> "(" <> a <> ", " <> b <> ")"
+    | "`" `T.isPrefixOf` pseudo =
+    (T.drop 1 $ T.dropEnd 1 $ pseudo) <> "(" <> a <> ", " <> b <> ")"
 convertInfix infx a b = T.intercalate " " $ [a, infx, b]
 
 }
 
 start returns [Text res]
-    : NL* func manyFunc NL* EOF
+    : NL* func NL? manyFunc NL* EOF
     { let res = func <> "\n\n" <> T.intercalate "\n\n" manyFunc };
 
 manyFunc returns [[Text] res]
-    : NL+ func manyFunc { let res = func : manyFunc }
+    : func NL? manyFunc { let res = func : manyFunc }
     | EPSILON           { let res = [] }
     ;
 
@@ -59,8 +60,8 @@ functypeCont returns [Int argnum]
 pureType: PURETYPE | PARENSQL pureType PARENSQR;
 
 decls [Int argnum, Text fooname] returns [[Text] res]
-    : decl[argnum fooname] decls[argnum fooname] { let res = decl : decls}
-    | EPSILON                                    { let res = [] }
+    : decl[argnum fooname] NL? decls[argnum fooname] { let res = decl : decls}
+    | EPSILON                                        { let res = [] }
     ;
 
 holeorname returns [Text res]
@@ -77,16 +78,16 @@ decl[Int argnum, Text fooname] returns [Text res]
     : NAME args guard EQUALS NL? retterm
     { when (length args /= argnum) $ panic $ "decl: number of args in type " <> show argnum <> " doesn't match number of args in decl " <> show (length args)
       when (tokenText tokenNAME /= fooname) $ panic "decl: fooname doesn't match"
-      let res = genDecl args guard (fst retterm) }
+      let res = genDecl args guard retterm }
     ;
 
 guard returns [Text res]
-    : VERTBAR retterm { let res = fst retterm }
-    | EPSILON         { let res = "" }
+    : VERTBAR term { let res = fst term }
+    | EPSILON      { let res = "" }
     ;
 
-retterm returns [Text res, Bool ret]
-    : term { let (res, ret) = if not (snd term) then ("return " <> fst term, True) else (fst term, False) }
+retterm returns [Text res]
+    : term { let res = if not (snd term) then "return " <> fst term else fst term }
     ;
 
 term returns [Text res, Bool ret]
@@ -106,27 +107,29 @@ basicTerm returns [Text res, Bool ret]
     : PARENL term PARENR              { let res = "(" <> fst term <> ")"
                                         let ret = snd term }
     | LET NL? func NL? IN NL? retterm { let ret = True
-                                        let res = func <> "\n" <> fst retterm }
+                                        let res = func <> "\n" <> retterm }
     | primToken                       { let ret = False
                                         let res = primToken }
-    | NAME terms                      { let ret = False
-                                        let res = tokenText tokenNAME <> "(" <> T.intercalate ", " terms <> ")" }
+    | NAME appArgs                    { let ret = False
+                                        let res = tokenText tokenNAME <> "(" <> T.intercalate ", " appArgs <> ")" }
     ;
 
-terms returns [[Text] res]
-    : term terms { let res = fst term : terms }
-    | EPSILON    { let res = [] }
+appArgs returns [[Text] res]
+    : NAME appArgs                    { let res = (tokenText tokenNAME <> "()") : appArgs }
+    | PARENL term PARENR              { let res = ["(" <> fst term <> ")"] }
+    | EPSILON                         { let res = [] }
     ;
 
 primToken returns [Text res]
     : INTLIT  { let res = tokenText tokenINTLIT }
     | CHARLIT { let res = tokenText tokenCHARLIT }
     | STRLIT  { let res = tokenText tokenSTRLIT }
-    | TRUE    { let res = "true" }
-    | FALSE   { let res = "false" }
+    | TRUE    { let res = "True" }
+    | FALSE   { let res = "False" }
     ;
 
 WHITESPACE: SKIP /[ \t]+/;
+COMMENT:    SKIP /--[^\n]*/;
 HOLE:            /_/;
 TRUE:            /True/;
 FALSE:           /False/;

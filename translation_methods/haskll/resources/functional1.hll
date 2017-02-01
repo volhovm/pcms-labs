@@ -2,16 +2,15 @@ divides :: Int -> Int -> Bool
 divides n m = n `mod` m == 0
 
 convertString :: String -> String
-convertString c | c == "k" = "aoeusnth"
-convertString c | c == "a" = "bababaa"
-convertString _   = "<error>"
+convertString c = "aoeusnth"
+convertString c = "bababaa"
+convertString _ = "<error>"
 
 checkSimple :: Int -> Bool
 checkSimple n =
    let square :: Int
        square = n * n
    in square / n == n
-
 
 convertString2 :: String -> String
 convertString2 _   = "<error>"
