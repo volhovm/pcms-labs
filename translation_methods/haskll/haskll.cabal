@@ -50,6 +50,7 @@ executable haskllcli
   main-is:             Main.hs
   build-depends:       base >= 4.9
                      , haskll
+                     , text >= 1.2.2.1
                      , universum
   hs-source-dirs:      src/haskllcli
   default-language:    Haskell2010

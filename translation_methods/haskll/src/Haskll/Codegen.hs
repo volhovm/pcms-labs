@@ -5,7 +5,6 @@
 
 module Haskll.Codegen
        ( genParser
-       , kek
        ) where
 
 import           Control.Lens             ((%=))
@@ -13,13 +12,11 @@ import           Data.FileEmbed           (embedStringFile, makeRelativeToProjec
 import           Data.Map                 ((!))
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
-import qualified Data.Text.IO             as TIO
 import           Universum
 
 import           Haskll.FirstFollow       (FirstSet, FollowSet, checkLL1, setFirstFollow)
 import           Haskll.Grammar           (convertGrammar)
 import           Haskll.Syntax.Expression (GrammarDef (..))
-import           Haskll.Syntax.Parser     (parseGrammar)
 import           Haskll.Types             (GrammarRule (..), ProdItem (..), notCode,
                                            pName, prettyGrammarRule, prettyProdItem)
 
@@ -199,15 +196,3 @@ genParser g = snd $ flip runState "" $ do
               \    let printMethod = bool drawTree drawVerticalTree isVert\n\
               \    putStrLn $ printMethod $ astToTree ast\n\
               \    putText res\n"
-
-----------------------------------------------------------------------------
--- Trash
-----------------------------------------------------------------------------
-
-
-kek :: IO ()
-kek  = do
-    g <- parseGrammar <$> TIO.readFile "resources/test2.g"
-    TIO.writeFile "src/Haskll/Test.hs" $ genParser $ either onLeft identity g
-  where
-    onLeft x = panic $ "Could not parse: " <> x

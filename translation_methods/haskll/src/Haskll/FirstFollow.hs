@@ -98,7 +98,6 @@ setFirstFollow (map filterProdCode -> rules) =
                 splitFoo (_,focus,[]) = do
                     curfollow <- use mapw
                     mapw . at (focus ^. pName) <>%= ((curfollow ! grName gCurrent)++)
-                splitFoo _ = pass
             forM_ (grProds gCurrent) $ \grProd -> forM_ (splitItems grProd) splitFoo
         after <- use mapw
         when (init /= after) loop
